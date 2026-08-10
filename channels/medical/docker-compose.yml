@@ -1,0 +1,33 @@
+services:
+  voicevox:
+    image: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+    restart: unless-stopped
+  pipeline:
+    build: .
+    depends_on: [voicevox]
+    env_file: [.env]
+    environment:
+      VOICEVOX_URL: http://voicevox:50021
+      VOICEVOX_AUTO_START: "0"
+      YOUTUBE_UPLOAD_PRIVACY: private
+      ENABLE_AUTO_PUBLISH: "0"
+    volumes:
+      - ./data:/app/data
+      - ./credentials:/app/credentials
+    profiles: [manual]
+  scheduler:
+    build: .
+    depends_on: [voicevox]
+    env_file: [.env]
+    environment:
+      VOICEVOX_URL: http://voicevox:50021
+      VOICEVOX_AUTO_START: "0"
+      YOUTUBE_UPLOAD_PRIVACY: private
+      ENABLE_AUTO_PUBLISH: "0"
+      TZ: Asia/Tokyo
+    volumes:
+      - ./data:/app/data
+      - ./credentials:/app/credentials
+      - ./docker/crontab:/etc/cron.d/medical-news:ro
+    command: ["cron", "-f"]
+    profiles: [scheduled]

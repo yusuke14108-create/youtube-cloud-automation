@@ -1,0 +1,11 @@
+[
+  {"id": 660271, "name_ja": "大谷翔平", "name_en": "Shohei Ohtani", "priority": 100},
+  {"id": 808967, "name_ja": "山本由伸", "name_en": "Yoshinobu Yamamoto", "priority": 95},
+  {"id": 808963, "name_ja": "佐々木朗希", "name_en": "Roki Sasaki", "priority": 90},
+  {"id": 673548, "name_ja": "鈴木誠也", "name_en": "Seiya Suzuki", "priority": 85},
+  {"id": 684007, "name_ja": "今永昇太", "name_en": "Shota Imanaga", "priority": 85},
+  {"id": 673540, "name_ja": "千賀滉大", "name_en": "Kodai Senga", "priority": 80},
+  {"id": 506433, "name_ja": "ダルビッシュ有", "name_en": "Yu Darvish", "priority": 80},
+  {"id": 579328, "name_ja": "菊池雄星", "name_en": "Yusei Kikuchi", "priority": 75},
+  {"id": 807799, "name_ja": "吉田正尚", "name_en": "Masataka Yoshida", "priority": 70}
+]

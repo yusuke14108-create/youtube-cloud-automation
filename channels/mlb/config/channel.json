@@ -1,0 +1,11 @@
+{
+  "channel_name": "MLB日本人選手ラボ",
+  "tagline": "日本人メジャーリーガーを、数字と図で深掘り。",
+  "long_videos_min": 1,
+  "long_videos_max": 2,
+  "shorts_min": 2,
+  "shorts_max": 3,
+  "voicevox_speaker_id": 3,
+  "publish_hour": 7,
+  "publish_minute": 0
+}

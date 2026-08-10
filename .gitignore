@@ -1,0 +1,12 @@
+**/.env
+**/.venv/
+**/credentials/
+**/data/
+**/__pycache__/
+**/.pytest_cache/
+*.log
+*.mp4
+*.wav
+*.m4a
+*.mov
+.DS_Store

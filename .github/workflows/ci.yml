@@ -1,0 +1,31 @@
+name: Safety tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: pip install requests google-auth google-auth-oauthlib google-api-python-client pillow
+      - name: Compile all Python
+        run: python -m compileall -q channels scripts
+      - name: Medical unit tests
+        working-directory: channels/medical
+        run: python -m unittest discover -s tests -v
+      - name: NBA unit tests
+        working-directory: channels/nba
+        run: python -m unittest discover -s tests -v
+      - name: Ensure secrets and runtime data are absent
+        run: |
+          test -z "$(find . -type f \( -name token.json -o -name client_secret.json -o -name .env \) -print)"
+          ! grep -RIE --exclude='*.png' --exclude='*.jpg' 'AIza[0-9A-Za-z_-]{20,}|sk-[A-Za-z0-9_-]{20,}|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' .

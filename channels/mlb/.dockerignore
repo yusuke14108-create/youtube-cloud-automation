@@ -1,0 +1,9 @@
+.git
+.venv
+__pycache__
+*.pyc
+data/audio
+data/video
+data/assets
+data/logs
+credentials

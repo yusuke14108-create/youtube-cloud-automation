@@ -1,0 +1,15 @@
+.venv/
+.env
+__pycache__/
+*.pyc
+data/new_items/
+data/selected/
+data/scripts/
+data/audio/
+data/video/
+credentials/
+firebase-debug.log
+data/logs/
+data/uploads/
+data/assets/
+data/analytics/

@@ -1,0 +1,24 @@
+services:
+  voicevox:
+    image: voicevox/voicevox_engine:cpu-latest
+    restart: unless-stopped
+  generator:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - voicevox
+    environment:
+      TZ: Asia/Tokyo
+      VOICEVOX_URL: http://voicevox:50021
+      LLM_PROVIDER: anthropic
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL}
+      GENERATE_HOUR: ${GENERATE_HOUR:-5}
+      GENERATE_MINUTE: ${GENERATE_MINUTE:-0}
+      PUBLISH_HOUR: ${PUBLISH_HOUR:-7}
+      PUBLISH_MINUTE: ${PUBLISH_MINUTE:-0}
+      ENABLE_AUTO_PUBLISH: ${ENABLE_AUTO_PUBLISH:-false}
+    volumes:
+      - ./data:/app/data
+      - ./credentials:/app/credentials
+      - ./config:/app/config:ro
