@@ -58,7 +58,7 @@ jobs:
         run: python scripts/verify_youtube_channel.py --credentials-dir channels/nba/credentials --expected-id UC-bnuR5UppuY_cnpLTxWyaA --expected-title "バスケ魂🔥 日本人NBA速報"
       - name: Start VOICEVOX
         run: |
-          docker run -d --name voicevox -p 50021:50021 voicevox/voicevox_engine:cpu-ubuntu20.04-latest --host 0.0.0.0
+          docker run -d --name voicevox -p 127.0.0.1:50021:50021 voicevox/voicevox_engine:cpu-latest
           for i in $(seq 1 60); do curl -fsS http://127.0.0.1:50021/version && break; sleep 3; done
           curl -fsS http://127.0.0.1:50021/version
       - name: Generate and upload privately
@@ -71,4 +71,4 @@ jobs:
         run: python -m generator.auto_publish
       - name: Keep JSON state only
         if: always()
-        run: find data -type f ! -name '*.json' -delete
+        run: test ! -d data || find data -type f ! -name '*.json' -delete
