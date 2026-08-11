@@ -2,6 +2,7 @@
 """Conservative media checks before changing private uploads to public."""
 import argparse
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -19,7 +20,11 @@ def main():
     parser.add_argument("channel_root", type=Path)
     parser.add_argument("--minimum-bytes", type=int, default=100_000)
     args = parser.parse_args()
-    videos = sorted((args.channel_root / "data").rglob("*.mp4"))
+    final_name = re.compile(r"(?:long|short_\d+)\.mp4")
+    videos = sorted(
+        path for path in (args.channel_root / "data").rglob("*.mp4")
+        if final_name.fullmatch(path.name)
+    )
     if not videos:
         raise SystemExit("[FAIL] no rendered MP4 files found")
     failures = []
