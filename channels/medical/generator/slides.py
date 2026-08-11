@@ -1,9 +1,14 @@
 from pathlib import Path
+import os
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
-FONT_BOLD = "/System/Library/Fonts/ヒラギノ角ゴシック W7.ttc"
-FONT_REGULAR = "/System/Library/Fonts/ヒラギノ角ゴシック W4.ttc"
+FONT_BOLD = os.getenv("FONT_BOLD", "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc")
+FONT_REGULAR = os.getenv("FONT_REGULAR", "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc")
+if not Path(FONT_BOLD).exists():
+    FONT_BOLD = "/System/Library/Fonts/ヒラギノ角ゴシック W7.ttc"
+if not Path(FONT_REGULAR).exists():
+    FONT_REGULAR = "/System/Library/Fonts/ヒラギノ角ゴシック W4.ttc"
 
 BG_TOP = (231, 243, 249)
 BG_BOTTOM = (250, 251, 246)
