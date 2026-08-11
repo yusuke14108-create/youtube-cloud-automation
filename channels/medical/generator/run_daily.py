@@ -37,6 +37,7 @@ def _find_resume_point(today: str):
 
 
 def _acquire_lock():
+    LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
     if LOCK_PATH.exists():
         if time.time() - LOCK_PATH.stat().st_mtime < STALE_LOCK_SECONDS:
             return False

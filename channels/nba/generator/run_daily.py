@@ -28,6 +28,7 @@ def allocate_short_counts(topic_count: int, total_shorts: int) -> list[int]:
 
 
 def _acquire_lock():
+    LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
     if LOCK_PATH.exists():
         try:
             lock = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
