@@ -40,6 +40,7 @@ class PipelineTests(unittest.TestCase):
     def test_player_photo_search_rejects_unrelated_people(self):
         self.assertTrue(_person_title_matches("Yuki Kawamura", "File:Yuki_Kawamura.jpg"))
         self.assertFalse(_person_title_matches("Yuki Kawamura", "Australia_vs_Japan_World_Cup.jpg"))
+        self.assertFalse(_person_title_matches("Yuki Kawamura", "Takumu_Kawamura_2024.jpg"))
 
     def test_other_sports_are_rejected_from_nba_visuals(self):
         self.assertFalse(_basketball_context_matches("Yuki Kawamura", "Japan football World Cup.jpg"))

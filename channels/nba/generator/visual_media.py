@@ -26,9 +26,9 @@ def _person_title_matches(query: str, title: str) -> bool:
         return True
     query_words = [word.lower() for word in re.findall(r"[A-Za-z]{3,}", query)]
     normalized_title = title.lower().replace("_", " ")
-    # Require the surname/last search token. This rejects visually unrelated
-    # results returned for a common first name such as "Yuki".
-    return query_words[-1] in normalized_title
+    # Require both given name and surname. A surname-only match can select a
+    # different athlete (for example Takumu Kawamura for Yuki Kawamura).
+    return all(word in normalized_title for word in query_words[:2])
 
 
 def _basketball_context_matches(query: str, title: str) -> bool:
