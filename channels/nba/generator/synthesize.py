@@ -101,7 +101,9 @@ def synthesize_text(session: requests.Session, text: str, out_wav_path: Path, ou
     _concat_wavs(wav_bytes_list, out_wav_path)
 
     captions = chunks_to_captions(chunks, durations)
-    write_srt(captions, out_srt_path)
+    # Fix the two-line layout before libass renders it; automatic wrapping can
+    # otherwise split a word even when the cue boundary itself is correct.
+    write_srt(captions, out_srt_path, max_line_len=14)
     return sum(durations)
 
 
@@ -127,7 +129,7 @@ def synthesize_sections(
 
     out_wav_path.parent.mkdir(parents=True, exist_ok=True)
     _concat_wavs(all_wav_bytes, out_wav_path)
-    write_srt(all_captions, out_srt_path)
+    write_srt(all_captions, out_srt_path, max_line_len=18)
 
     sections_out = [{"bullet": s["bullet"], "duration": d} for s, d in zip(sections, section_durations)]
     out_sections_path.write_text(json.dumps(sections_out, ensure_ascii=False, indent=2), encoding="utf-8")

@@ -1,9 +1,11 @@
 import re
+from typing import Optional
 
 MAX_CHUNK_LEN = 20
 BREAK_CHARS = set("、。！？：；")
 NO_CHUNK_START = set("、。！？：；）】」』〉》〕ぁぃぅぇぉゃゅょっァィゥェォャュョッー")
-NO_CHUNK_END = set("はがをにへでともやのかば、：；（【「『〈《〔")
+NO_CHUNK_END = set("、：；（【「『〈《〔")
+PARTICLES = set("はがをにへでともやのかば")
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？])")
 CLAUSE_SPLIT_RE = re.compile(r"(?<=[、])")
 
@@ -26,11 +28,13 @@ def _break_score(text: str, index: int, target: int) -> int:
     if not 1 < index < len(text):
         return -10_000
     left, right = text[index - 1], text[index]
-    if left in NO_CHUNK_END or right in NO_CHUNK_START:
+    if left in NO_CHUNK_END or right in NO_CHUNK_START or right in PARTICLES:
         return -10_000
     score = -abs(index - target) * 3
     if left in BREAK_CHARS:
         score += 100
+    if left in PARTICLES:
+        score += 65
     left_class, right_class = _char_class(left), _char_class(right)
     if left_class != right_class:
         score += 20
@@ -43,9 +47,9 @@ def _break_score(text: str, index: int, target: int) -> int:
     # Never split a kanji compound such as 「理由」 or an alphabetic name.
     if left_class == right_class and left_class in {"kanji", "katakana", "ascii"}:
         score -= 90
+    if left_class == right_class == "hiragana":
+        score -= 55
     # A one-character particle belongs with the phrase on its left: 「私は」, not 「私」/「は」.
-    if right in NO_CHUNK_END:
-        score -= 100
     return score
 
 
@@ -115,12 +119,18 @@ def _format_timestamp(seconds: float) -> str:
     return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
 
-def write_srt(captions: list, out_path) -> None:
+def caption_display_text(text: str, max_line_len: Optional[int] = None) -> str:
+    if not max_line_len or len(text) <= max_line_len:
+        return text
+    return "\n".join(_hard_wrap(text, max_line_len))
+
+
+def write_srt(captions: list, out_path, max_line_len: Optional[int] = None) -> None:
     lines = []
     for i, cue in enumerate(captions, start=1):
         lines.append(str(i))
         lines.append(f"{_format_timestamp(cue['start'])} --> {_format_timestamp(cue['end'])}")
-        lines.append(_highlight(cue["text"]))
+        lines.append(_highlight(caption_display_text(cue["text"], max_line_len)))
         lines.append("")
     out_path.write_text("\n".join(lines), encoding="utf-8")
 

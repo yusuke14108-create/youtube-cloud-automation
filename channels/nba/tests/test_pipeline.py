@@ -8,7 +8,7 @@ from generator.run_daily import allocate_short_counts
 from generator.visual_media import _license_ok
 from generator.visual_media import _person_title_matches
 from generator.visual_media import _basketball_context_matches
-from generator.captions import text_to_caption_chunks
+from generator.captions import caption_display_text, text_to_caption_chunks
 from generator.pronunciation import for_speech
 from generator import upload_youtube
 from generator.generate_scripts import GENERATE_PROMPT_TEMPLATE, GENERATE_SCHEMA, _normalize_display_names
@@ -51,6 +51,10 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual("".join(chunks), "河村勇輝がクリッパーズを選んだ理由とは何なのか。")
         self.assertFalse(any(chunk.endswith(("理", "私", "選", "見")) for chunk in chunks))
         self.assertFalse(any(chunk.startswith(("由", "は", "んだ", "えて")) for chunk in chunks))
+        display = caption_display_text("選んだ理由とは何なのか。", max_line_len=8)
+        self.assertNotIn("理\n由", display)
+        team = caption_display_text("ロサンゼルス・クリッパーズと契約", max_line_len=14)
+        self.assertNotIn("クリッ\nパーズ", team)
 
     def test_pronunciation_dictionary_keeps_given_name_boundary(self):
         self.assertIn("かわむら ゆうき", for_speech("河村勇輝の理由"))
