@@ -3,6 +3,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
+from generator.visual_media import _basketball_context_matches, _person_title_matches
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSET_DIR = ROOT / "data" / "assets"
@@ -31,6 +32,9 @@ def find_commons_image(query, session=None):
     response = session.get(API, params=params, timeout=25)
     response.raise_for_status()
     for page in response.json().get("query", {}).get("pages", {}).values():
+        title = page.get("title", "")
+        if not _person_title_matches(query, title) or not _basketball_context_matches(query, title):
+            continue
         info = (page.get("imageinfo") or [{}])[0]
         meta = info.get("extmetadata", {})
         if _license_ok(meta) and (info.get("thumburl") or info.get("url")):

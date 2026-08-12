@@ -7,6 +7,9 @@ from unittest.mock import patch
 from generator.run_daily import allocate_short_counts
 from generator.visual_media import _license_ok
 from generator.visual_media import _person_title_matches
+from generator.visual_media import _basketball_context_matches
+from generator.captions import text_to_caption_chunks
+from generator.pronunciation import for_speech
 from generator import upload_youtube
 from generator.generate_scripts import GENERATE_PROMPT_TEMPLATE, GENERATE_SCHEMA, _normalize_display_names
 
@@ -37,6 +40,19 @@ class PipelineTests(unittest.TestCase):
     def test_player_photo_search_rejects_unrelated_people(self):
         self.assertTrue(_person_title_matches("Yuki Kawamura", "File:Yuki_Kawamura.jpg"))
         self.assertFalse(_person_title_matches("Yuki Kawamura", "Australia_vs_Japan_World_Cup.jpg"))
+
+    def test_other_sports_are_rejected_from_nba_visuals(self):
+        self.assertFalse(_basketball_context_matches("Yuki Kawamura", "Japan football World Cup.jpg"))
+        self.assertTrue(_basketball_context_matches("Yuki Kawamura", "Yuki Kawamura basketball.jpg"))
+
+    def test_caption_breaks_preserve_words_and_particles(self):
+        chunks = text_to_caption_chunks("河村勇輝がクリッパーズを選んだ理由とは何なのか。", max_len=14)
+        self.assertEqual("".join(chunks), "河村勇輝がクリッパーズを選んだ理由とは何なのか。")
+        self.assertFalse(any(chunk.endswith(("理", "私", "選", "見")) for chunk in chunks))
+        self.assertFalse(any(chunk.startswith(("由", "は", "んだ", "えて")) for chunk in chunks))
+
+    def test_pronunciation_dictionary_keeps_given_name_boundary(self):
+        self.assertIn("かわむら ゆうき", for_speech("河村勇輝の理由"))
 
     def test_upload_resume_reuses_completed_long_video(self):
         with tempfile.TemporaryDirectory() as temp:

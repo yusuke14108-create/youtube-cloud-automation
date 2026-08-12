@@ -10,6 +10,10 @@ API = "https://commons.wikimedia.org/w/api.php"
 ALLOWED = ("cc0", "public domain", "cc by ", "cc-by-", "cc by-sa", "cc-by-sa")
 REJECTED = ("-nc", "noncommercial", "-nd", "no derivatives")
 USER_AGENT = "JapanesePlayersBasketballNews/1.0 (licensed still-image retrieval)"
+OTHER_SPORT_TERMS = (
+    "soccer", "football", "fifa", "world cup", "baseball", "mlb", "cricket",
+    "rugby", "hockey", "tennis", "volleyball", "golf",
+)
 
 
 def _named_person_query(query: str) -> bool:
@@ -25,6 +29,11 @@ def _person_title_matches(query: str, title: str) -> bool:
     # Require the surname/last search token. This rejects visually unrelated
     # results returned for a common first name such as "Yuki".
     return query_words[-1] in normalized_title
+
+
+def _basketball_context_matches(query: str, title: str) -> bool:
+    combined = f"{query} {title}".lower().replace("_", " ")
+    return not any(term in combined for term in OTHER_SPORT_TERMS)
 
 
 def _plain(value):
@@ -47,6 +56,8 @@ def _search_commons(query: str, filetype: str, session: requests.Session, result
     matches = []
     for page in response.json().get("query", {}).get("pages", {}).values():
         if not _person_title_matches(query, page.get("title", "")):
+            continue
+        if not _basketball_context_matches(query, page.get("title", "")):
             continue
         info = (page.get("imageinfo") or [{}])[0]
         meta = info.get("extmetadata", {})

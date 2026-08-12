@@ -1,4 +1,5 @@
 import json
+import re
 import wave
 from io import BytesIO
 from pathlib import Path
@@ -61,17 +62,35 @@ def _concat_wavs(wav_bytes_list: list, out_path: Path) -> None:
                 out.writeframes(w.readframes(w.getnframes()))
 
 
+def _allocate_duration(chunks: list[str], total: float) -> list[float]:
+    weights = [max(1, len(re.sub(r"[\s、。！？]", "", chunk))) for chunk in chunks]
+    durations = [total * weight / sum(weights) for weight in weights]
+    durations[-1] += total - sum(durations)
+    return durations
+
+
 def _synthesize_chunks(session: requests.Session, text: str) -> tuple:
-    """Synthesize each caption chunk separately, so subtitle timing is each
-    chunk's own measured audio duration instead of a character-count estimate
-    within a longer paragraph (the estimate is what caused audio/subtitle drift)."""
-    chunks = text_to_caption_chunks(text.replace("\n", ""))
-    last = len(chunks) - 1
-    wav_bytes_list = [
-        _synthesize_segment(session, chunk, is_first=(i == 0), is_last=(i == last))
-        for i, chunk in enumerate(chunks)
-    ]
-    durations = [_wav_duration(w) for w in wav_bytes_list]
+    """Synthesize complete sentences for natural Japanese intonation.
+
+    Captions may change inside a sentence, but audio is never restarted at a
+    visual line break. Cue timing is allocated inside the measured sentence
+    duration, so the final cue remains exactly aligned with the audio.
+    """
+    clean = text.replace("\n", "")
+    sentences = [part for part in re.split(r"(?<=[。！？])", clean) if part.strip()]
+    sentences = sentences or [clean]
+    chunks = []
+    wav_bytes_list = []
+    durations = []
+    for index, sentence in enumerate(sentences):
+        sentence_chunks = text_to_caption_chunks(sentence)
+        wav = _synthesize_segment(
+            session, sentence, is_first=(index == 0), is_last=(index == len(sentences) - 1)
+        )
+        duration = _wav_duration(wav)
+        chunks.extend(sentence_chunks)
+        wav_bytes_list.append(wav)
+        durations.extend(_allocate_duration(sentence_chunks, duration))
     return chunks, wav_bytes_list, durations
 
 

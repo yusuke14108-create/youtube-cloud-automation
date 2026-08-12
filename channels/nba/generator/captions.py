@@ -1,24 +1,59 @@
 import re
 
 MAX_CHUNK_LEN = 20
-BREAK_CHARS = set("はがをにへでともやのねよかしば、。！？")
+BREAK_CHARS = set("、。！？：；")
 NO_CHUNK_START = set("、。！？：；）】」』〉》〕ぁぃぅぇぉゃゅょっァィゥェォャュョッー")
+NO_CHUNK_END = set("はがをにへでともやのかば、：；（【「『〈《〔")
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？])")
 CLAUSE_SPLIT_RE = re.compile(r"(?<=[、])")
 
 
+def _char_class(ch: str) -> str:
+    code = ord(ch)
+    if 0x4E00 <= code <= 0x9FFF or 0x3400 <= code <= 0x4DBF:
+        return "kanji"
+    if 0x3040 <= code <= 0x309F:
+        return "hiragana"
+    if 0x30A0 <= code <= 0x30FF:
+        return "katakana"
+    if ch.isascii() and ch.isalnum():
+        return "ascii"
+    return "other"
+
+
+def _break_score(text: str, index: int, target: int) -> int:
+    """Score a cue boundary without cutting a word or stranding a particle."""
+    if not 1 < index < len(text):
+        return -10_000
+    left, right = text[index - 1], text[index]
+    if left in NO_CHUNK_END or right in NO_CHUNK_START:
+        return -10_000
+    score = -abs(index - target) * 3
+    if left in BREAK_CHARS:
+        score += 100
+    left_class, right_class = _char_class(left), _char_class(right)
+    if left_class != right_class:
+        score += 20
+    # Hiragana followed by kanji is commonly a phrase boundary (選んだ|理由).
+    if left_class == "hiragana" and right_class == "kanji":
+        score += 55
+    # Kanji followed by hiragana is commonly one inflected word (選|んだ, 見|える).
+    if left_class == "kanji" and right_class == "hiragana":
+        score -= 100
+    # Never split a kanji compound such as 「理由」 or an alphabetic name.
+    if left_class == right_class and left_class in {"kanji", "katakana", "ascii"}:
+        score -= 90
+    # A one-character particle belongs with the phrase on its left: 「私は」, not 「私」/「は」.
+    if right in NO_CHUNK_END:
+        score -= 100
+    return score
+
+
 def _find_break_point(text: str, max_len: int) -> int:
-    window_start = max(2, max_len - 8)
-    for i in range(min(max_len, len(text) - 1), window_start - 1, -1):
-        if i < len(text) and text[i - 1] in BREAK_CHARS:
-            return i
-    for i in range(max_len + 1, min(len(text), max_len + 10)):
-        if text[i - 1] in BREAK_CHARS:
-            return i
-    cut = min(len(text), max_len + 8)
-    while cut < len(text) and text[cut] in NO_CHUNK_START:
-        cut += 1
-    return cut
+    upper = min(len(text) - 1, max_len + 8)
+    lower = max(3, max_len - 8)
+    candidates = range(lower, upper + 1)
+    return max(candidates, key=lambda i: _break_score(text, i, max_len))
 
 
 def _hard_wrap(text: str, max_len: int) -> list:
