@@ -8,6 +8,11 @@ on:
         required: false
         type: boolean
         default: false
+      rerender_latest_script:
+        description: "Rerender the latest cached script to verify presentation-only fixes"
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: "17 20 * * *" # 05:17 JST
 
@@ -35,6 +40,7 @@ jobs:
       ENABLE_AUTO_PUBLISH: ${{ vars.ENABLE_AUTO_PUBLISH || 'false' }}
       FFMPEG_TIMEOUT: "3600"
       PIPELINE_RUN_SUFFIX: ${{ inputs.force_fresh_test && format('_test_{0}', github.run_id) || '' }}
+      RERENDER_SUFFIX: ${{ format('rerender_{0}', github.run_id) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -71,7 +77,11 @@ jobs:
           for i in $(seq 1 60); do curl -fsS http://127.0.0.1:50021/version && break; sleep 3; done
           curl -fsS http://127.0.0.1:50021/version
       - name: Generate and upload privately
+        if: inputs.rerender_latest_script != true
         run: python -m generator.cli run --upload-private
+      - name: Rerender latest script and upload privately
+        if: inputs.rerender_latest_script == true
+        run: python -m generator.rerender_latest
       - name: Quality gate
         working-directory: .
         run: python scripts/quality_gate.py channels/nba
