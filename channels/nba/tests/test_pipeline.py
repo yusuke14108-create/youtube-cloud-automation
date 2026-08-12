@@ -55,6 +55,9 @@ class PipelineTests(unittest.TestCase):
         self.assertNotIn("理\n由", display)
         team = caption_display_text("ロサンゼルス・クリッパーズと契約", max_line_len=14)
         self.assertNotIn("クリッ\nパーズ", team)
+        exhibit = caption_display_text("エキシビット１０契約で競争に挑む", max_line_len=8)
+        self.assertNotIn("エキシビット\n１０契約", exhibit)
+        self.assertNotIn("競\n争", exhibit)
 
     def test_pronunciation_dictionary_keeps_given_name_boundary(self):
         self.assertIn("かわむら ゆうき", for_speech("河村勇輝の理由"))

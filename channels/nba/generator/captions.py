@@ -8,6 +8,20 @@ NO_CHUNK_END = set("、：；（【「『〈《〔")
 PARTICLES = set("はがをにへでともやのかば")
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？])")
 CLAUSE_SPLIT_RE = re.compile(r"(?<=[、])")
+PROTECTED_TERM_RE = re.compile(
+    r"エキシビット[0-9０-９]+契約|"
+    r"[ァ-ヶー・]+(?:[0-9０-９]+)?(?:契約)?|"
+    r"[一-龯々]{2,}|"
+    r"[A-Za-z]+(?:[ -][A-Za-z0-9]+)*"
+)
+
+
+def _protected_ranges(text: str) -> list[tuple[int, int]]:
+    return [match.span() for match in PROTECTED_TERM_RE.finditer(text)]
+
+
+def _inside_protected_term(text: str, index: int) -> bool:
+    return any(start < index < end for start, end in _protected_ranges(text))
 
 
 def _char_class(ch: str) -> str:
@@ -26,6 +40,8 @@ def _char_class(ch: str) -> str:
 def _break_score(text: str, index: int, target: int) -> int:
     """Score a cue boundary without cutting a word or stranding a particle."""
     if not 1 < index < len(text):
+        return -10_000
+    if _inside_protected_term(text, index):
         return -10_000
     left, right = text[index - 1], text[index]
     if left in NO_CHUNK_END or right in NO_CHUNK_START or right in PARTICLES:
