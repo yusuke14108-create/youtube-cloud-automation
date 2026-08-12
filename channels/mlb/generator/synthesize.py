@@ -7,6 +7,7 @@ from pathlib import Path
 import requests
 
 from generator.captions import MAX_CHUNK_LEN, chunks_to_captions, text_to_caption_chunks, write_srt
+from generator.pronunciation import for_speech
 
 ENGINE_URL = os.getenv("VOICEVOX_URL", "http://localhost:50021")
 SPEAKER_ID = int(os.getenv("VOICEVOX_SPEAKER_ID", "3"))
@@ -20,7 +21,7 @@ SENTENCE_END_CHARS = "。！？"
 
 
 def _synthesize_segment(session: requests.Session, text: str, is_first=True, is_last=True) -> bytes:
-    query = session.post(f"{ENGINE_URL}/audio_query", params={"text": text, "speaker": SPEAKER_ID}, timeout=30)
+    query = session.post(f"{ENGINE_URL}/audio_query", params={"text": for_speech(text), "speaker": SPEAKER_ID}, timeout=30)
     query.raise_for_status()
     payload = query.json()
 

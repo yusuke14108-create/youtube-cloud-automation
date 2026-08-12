@@ -20,14 +20,14 @@ SHORT_SIZE = (1080, 1920)
 FPS = 25
 
 SUBTITLE_STYLE = (
-    "FontName=Noto Sans CJK JP,FontSize=20,Bold=1,PrimaryColour=&H00FFFFFF,"
-    "OutlineColour=&H00000000,BorderStyle=1,Outline=3,Shadow=0,"
-    "Alignment=2,MarginV=60"
+    "FontName=Noto Sans CJK JP,FontSize=25,Bold=1,PrimaryColour=&H00FFFFFF,"
+    "OutlineColour=&H00101010,BorderStyle=1,Outline=1.4,Shadow=0,"
+    "Alignment=2,MarginL=32,MarginR=32,MarginV=72"
 )
 LONG_SUBTITLE_STYLE = (
-    "FontName=Noto Sans CJK JP,FontSize=24,Bold=1,PrimaryColour=&H00FFFFFF,"
-    "OutlineColour=&H00000000,BorderStyle=1,Outline=3,Shadow=0,"
-    "Alignment=2,MarginV=40"
+    "FontName=Noto Sans CJK JP,FontSize=29,Bold=1,PrimaryColour=&H00FFFFFF,"
+    "OutlineColour=&H00101010,BorderStyle=1,Outline=1.5,Shadow=0,"
+    "Alignment=2,MarginL=42,MarginR=42,MarginV=46"
 )
 
 

@@ -6,6 +6,7 @@ from pathlib import Path
 import requests
 
 from generator.captions import MAX_CHUNK_LEN, chunks_to_captions, text_to_caption_chunks, write_srt
+from generator.pronunciation import for_speech
 from generator.artifacts import valid_text, valid_wav
 from generator.config import VOICEVOX_URL
 
@@ -21,7 +22,7 @@ SENTENCE_END_CHARS = "。！？"
 
 
 def _synthesize_segment(session: requests.Session, text: str, is_first=True, is_last=True) -> bytes:
-    query = session.post(f"{ENGINE_URL}/audio_query", params={"text": text, "speaker": SPEAKER_ID}, timeout=30)
+    query = session.post(f"{ENGINE_URL}/audio_query", params={"text": for_speech(text), "speaker": SPEAKER_ID}, timeout=30)
     query.raise_for_status()
     payload = query.json()
 

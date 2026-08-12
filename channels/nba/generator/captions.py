@@ -1,22 +1,21 @@
 import re
 
 MAX_CHUNK_LEN = 20
-BREAK_CHARS = set("はがをにでともやのねよかしば")
+BREAK_CHARS = set("はがをにへでともやのねよかしば、。！？")
 NO_CHUNK_START = set("、。！？：；）】」』〉》〕ぁぃぅぇぉゃゅょっァィゥェォャュョッー")
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？])")
 CLAUSE_SPLIT_RE = re.compile(r"(?<=[、])")
 
 
 def _find_break_point(text: str, max_len: int) -> int:
-    window_start = max(1, max_len - 6)
-    for i in range(max_len, window_start - 1, -1):
+    window_start = max(2, max_len - 8)
+    for i in range(min(max_len, len(text) - 1), window_start - 1, -1):
         if i < len(text) and text[i - 1] in BREAK_CHARS:
-            cut = i
-            break
-    else:
-        cut = max_len
-    while cut > 1 and cut < len(text) and text[cut - 1].isascii() and text[cut - 1].isalnum() and text[cut].isascii() and text[cut].isalnum():
-        cut -= 1
+            return i
+    for i in range(max_len + 1, min(len(text), max_len + 10)):
+        if text[i - 1] in BREAK_CHARS:
+            return i
+    cut = min(len(text), max_len + 8)
     while cut < len(text) and text[cut] in NO_CHUNK_START:
         cut += 1
     return cut
@@ -34,7 +33,7 @@ def _hard_wrap(text: str, max_len: int) -> list:
     return chunks or [text]
 
 
-def _merge_short_tails(chunks: list, min_len: int = 3) -> list:
+def _merge_short_tails(chunks: list, min_len: int = 6) -> list:
     merged = []
     for chunk in chunks:
         if merged and len(chunk) < min_len:
@@ -86,6 +85,13 @@ def write_srt(captions: list, out_path) -> None:
     for i, cue in enumerate(captions, start=1):
         lines.append(str(i))
         lines.append(f"{_format_timestamp(cue['start'])} --> {_format_timestamp(cue['end'])}")
-        lines.append(cue["text"])
+        lines.append(_highlight(cue["text"]))
         lines.append("")
     out_path.write_text("\n".join(lines), encoding="utf-8")
+
+
+IMPORTANT_RE = re.compile(r"(河村勇輝|八村塁|富永啓生|契約|移籍|復帰|得点|勝利|負傷|記録|日本代表|\d+(?:\.\d+)?(?:点|本|勝|敗|％|%|位)?)")
+
+
+def _highlight(text: str) -> str:
+    return IMPORTANT_RE.sub(r'<font color="#FFD54A">\1</font>', text)

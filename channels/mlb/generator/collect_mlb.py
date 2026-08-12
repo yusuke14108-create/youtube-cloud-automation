@@ -39,21 +39,27 @@ def _game_facts(game, player_by_id):
                 player_id = int(raw_id.replace("ID", ""))
             except ValueError:
                 continue
-            configured = player_by_id.get(player_id)
-            if not configured:
-                continue
             batting = entry.get("stats", {}).get("batting", {})
             pitching = entry.get("stats", {}).get("pitching", {})
             # The boxscore's players map includes active roster members who did not
             # appear. Do not turn roster presence into a false "played today" fact.
             if not batting and not pitching:
                 continue
+            configured = player_by_id.get(player_id)
+            is_notable = (
+                batting.get("homeRuns", 0) >= 2 or batting.get("rbi", 0) >= 4 or batting.get("hits", 0) >= 4
+                or pitching.get("strikeOuts", 0) >= 10 or pitching.get("perfectGame") or pitching.get("noHitter")
+            )
+            if not configured and not is_notable:
+                continue
+            person_name = entry.get("person", {}).get("fullName", "")
             facts.append({
                 "kind": "game",
                 "player_id": player_id,
-                "player_name": configured["name_ja"],
-                "player_name_en": configured["name_en"],
-                "priority": configured.get("priority", 0),
+                "player_name": configured["name_ja"] if configured else person_name,
+                "player_name_en": configured["name_en"] if configured else person_name,
+                "priority": configured.get("priority", 0) if configured else 45,
+                "scope": "japanese" if configured else "league_notable",
                 "team": team_name,
                 "game_pk": game_pk,
                 "game_date": game.get("officialDate"),

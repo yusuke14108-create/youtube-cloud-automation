@@ -7,6 +7,7 @@ import requests
 from generator.config import VOICEVOX_URL, VOICEVOX_SPEAKER_ID
 
 from generator.captions import chunks_to_captions, text_to_caption_chunks, write_srt
+from generator.pronunciation import for_speech
 
 ENGINE_URL = VOICEVOX_URL
 SPEAKER_ID = VOICEVOX_SPEAKER_ID
@@ -20,7 +21,7 @@ SENTENCE_END_CHARS = "。！？"
 
 
 def _synthesize_segment(session: requests.Session, text: str, is_first=True, is_last=True) -> bytes:
-    query = session.post(f"{ENGINE_URL}/audio_query", params={"text": text, "speaker": SPEAKER_ID}, timeout=30)
+    query = session.post(f"{ENGINE_URL}/audio_query", params={"text": for_speech(text), "speaker": SPEAKER_ID}, timeout=30)
     query.raise_for_status()
     payload = query.json()
 

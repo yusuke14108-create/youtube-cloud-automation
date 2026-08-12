@@ -22,15 +22,15 @@ SHORT_SIZE = (1080, 1920)
 
 SUBTITLE_FONT = os.getenv("SUBTITLE_FONT", "Noto Sans CJK JP")
 LONG_SUBTITLE_STYLE = (
-    f"FontName={SUBTITLE_FONT},FontSize=14,Bold=1,PrimaryColour=&H00FFFFFF,"
-    "OutlineColour=&H00000000,BorderStyle=1,Outline=1.5,Shadow=1,"
-    "Alignment=2,MarginL=32,MarginR=32,MarginV=36,Spacing=0.2"
+    f"FontName={SUBTITLE_FONT},FontSize=19,Bold=1,PrimaryColour=&H00FFFFFF,"
+    "OutlineColour=&H00101010,BorderStyle=1,Outline=0.9,Shadow=0,"
+    "Alignment=2,MarginL=38,MarginR=38,MarginV=42,Spacing=0.2"
 )
 
 SHORT_SUBTITLE_STYLE = (
-    f"FontName={SUBTITLE_FONT},FontSize=10,Bold=1,PrimaryColour=&H00FFFFFF,"
-    "OutlineColour=&H00000000,BorderStyle=1,Outline=1.2,Shadow=0,"
-    "Alignment=2,MarginL=22,MarginR=22,MarginV=70,Spacing=0.1"
+    f"FontName={SUBTITLE_FONT},FontSize=14,Bold=1,PrimaryColour=&H00FFFFFF,"
+    "OutlineColour=&H00101010,BorderStyle=1,Outline=0.8,Shadow=0,"
+    "Alignment=2,MarginL=28,MarginR=28,MarginV=76,Spacing=0.1"
 )
 
 

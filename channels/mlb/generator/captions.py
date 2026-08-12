@@ -1,7 +1,7 @@
 import re
 
 MAX_CHUNK_LEN = 22
-BREAK_CHARS = set("はがをにでともやのねよかしば")
+BREAK_CHARS = set("はがをにへでともやのねよかしば、。！？")
 NO_CHUNK_START = set("、。！？：；）】」』〉》〕ぁぃぅぇぉゃゅょっァィゥェォャュョッー")
 PREFERRED_SUFFIXES = ("しています", "して", "ています", "ました", "ません", "ため", "一方", "ただし")
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？])")
@@ -9,22 +9,14 @@ CLAUSE_SPLIT_RE = re.compile(r"(?<=[、])")
 
 
 def _find_break_point(text: str, max_len: int) -> int:
-    window_start = max(1, max_len - 10)
-    cut = None
-    for suffix in PREFERRED_SUFFIXES:
-        i = text.rfind(suffix, window_start, max_len + 1)
-        if i != -1:
-            cut = i
-            break
-    if cut is None:
-        for i in range(max_len, window_start - 1, -1):
-            if i < len(text) and text[i - 1] in BREAK_CHARS:
-                cut = i
-                break
-    if cut is None:
-        cut = max_len
-    while cut > 1 and cut < len(text) and text[cut - 1].isascii() and text[cut - 1].isalnum() and text[cut].isascii() and text[cut].isalnum():
-        cut -= 1
+    window_start = max(2, max_len - 8)
+    for i in range(min(max_len, len(text) - 1), window_start - 1, -1):
+        if text[i - 1] in BREAK_CHARS:
+            return i
+    for i in range(max_len + 1, min(len(text), max_len + 10)):
+        if text[i - 1] in BREAK_CHARS:
+            return i
+    cut = min(len(text), max_len + 8)
     while cut < len(text) and text[cut] in NO_CHUNK_START:
         cut += 1
     return cut
@@ -42,7 +34,7 @@ def _hard_wrap(text: str, max_len: int) -> list:
     return chunks or [text]
 
 
-def _merge_short_tails(chunks: list, min_len: int = 3) -> list:
+def _merge_short_tails(chunks: list, min_len: int = 6) -> list:
     merged = []
     for chunk in chunks:
         if merged and len(chunk) < min_len:
@@ -97,6 +89,13 @@ def write_srt(captions: list, out_path) -> None:
     for i, cue in enumerate(captions, start=1):
         lines.append(str(i))
         lines.append(f"{_format_timestamp(cue['start'])} --> {_format_timestamp(cue['end'])}")
-        lines.append(cue["text"])
+        lines.append(_highlight(cue["text"]))
         lines.append("")
     out_path.write_text("\n".join(lines), encoding="utf-8")
+
+
+IMPORTANT_RE = re.compile(r"(大谷翔平|山本由伸|佐々木朗希|鈴木誠也|今永昇太|千賀滉大|ダルビッシュ有|菊池雄星|吉田正尚|本塁打|ホームラン|奪三振|勝利|敗戦|記録|\d+(?:\.\d+)?(?:本|安打|打点|盗塁|勝|敗|奪三振|回)?)")
+
+
+def _highlight(text: str) -> str:
+    return IMPORTANT_RE.sub(r'<font color="#FFCF40">\1</font>', text)
