@@ -14,7 +14,7 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: "17 20 * * *" # 05:17 JST
+    - cron: "17 18 * * *" # 03:17 JST; finish private upload before 05:00
 
 permissions:
   contents: read
@@ -39,6 +39,7 @@ jobs:
       ENABLE_UPLOAD: "true"
       ENABLE_AUTO_PUBLISH: ${{ vars.ENABLE_AUTO_PUBLISH || 'false' }}
       FFMPEG_TIMEOUT: "3600"
+      YOUTUBE_SCHEDULE_PUBLIC_HOUR: "6"
       PIPELINE_RUN_SUFFIX: ${{ inputs.force_fresh_test && format('_test_{0}', github.run_id) || '' }}
       RERENDER_SUFFIX: ${{ format('rerender_{0}', github.run_id) }}
     steps:
@@ -85,9 +86,6 @@ jobs:
       - name: Quality gate
         working-directory: .
         run: python scripts/quality_gate.py channels/nba
-      - name: Publish only after opt-in
-        if: vars.ENABLE_AUTO_PUBLISH == 'true'
-        run: python -m generator.auto_publish
       - name: Keep JSON state only
         if: always()
         run: test ! -d data || find data -type f ! -name '*.json' -delete

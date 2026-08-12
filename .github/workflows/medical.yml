@@ -29,6 +29,7 @@ jobs:
       YOUTUBE_UPLOAD_PRIVACY: private
       ENABLE_AUTO_PUBLISH: ${{ vars.ENABLE_AUTO_PUBLISH == 'true' && '1' || '0' }}
       FFMPEG_TIMEOUT: "3600"
+      YOUTUBE_SCHEDULE_PUBLIC_HOUR: "6"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -67,9 +68,6 @@ jobs:
       - name: Quality gate
         working-directory: .
         run: python scripts/quality_gate.py channels/medical
-      - name: Publish only after opt-in
-        if: vars.ENABLE_AUTO_PUBLISH == 'true'
-        run: python -m generator.auto_publish
       - name: Keep JSON state only
         if: always()
         run: test ! -d data || find data -type f ! -name '*.json' -delete

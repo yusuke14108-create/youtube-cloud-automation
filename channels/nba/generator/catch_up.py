@@ -1,8 +1,6 @@
-from generator.auto_publish import main as auto_publish
 from generator.run_daily import main as run_daily
 from generator.config import (
-    ENABLE_AUTO_PUBLISH, ENABLE_UPLOAD, GENERATE_HOUR, GENERATE_MINUTE,
-    PUBLISH_HOUR, PUBLISH_MINUTE, now_local, reached,
+    ENABLE_UPLOAD, GENERATE_HOUR, GENERATE_MINUTE, now_local, reached,
 )
 
 
@@ -14,10 +12,8 @@ def main():
 
     run_daily(allow_upload=ENABLE_UPLOAD)
 
-    if ENABLE_AUTO_PUBLISH and reached(now, PUBLISH_HOUR, PUBLISH_MINUTE):
-        auto_publish()
-    elif reached(now, PUBLISH_HOUR, PUBLISH_MINUTE):
-        print("[safe] automatic public publishing is disabled")
+    # The upload itself carries the 06:00 publish reservation. A bulk publish
+    # here could undo a user's manual cancellation.
 
 
 if __name__ == "__main__":

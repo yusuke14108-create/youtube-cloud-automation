@@ -1,6 +1,8 @@
 import unittest
 import json
+import os
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -61,6 +63,13 @@ class PipelineTests(unittest.TestCase):
 
     def test_pronunciation_dictionary_keeps_given_name_boundary(self):
         self.assertIn("かわむら ゆうき", for_speech("河村勇輝の理由"))
+
+    def test_uploads_are_scheduled_for_six_jst(self):
+        with patch.dict(os.environ, {"TZ": "Asia/Tokyo", "YOUTUBE_SCHEDULE_PUBLIC_HOUR": "6"}):
+            value = upload_youtube._scheduled_publish_at()
+        target = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        self.assertEqual(target.hour, 21)  # 06:00 JST is 21:00 UTC on the previous day.
+        self.assertGreater(target, datetime.now(timezone.utc))
 
     def test_upload_resume_reuses_completed_long_video(self):
         with tempfile.TemporaryDirectory() as temp:

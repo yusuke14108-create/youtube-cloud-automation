@@ -1,6 +1,9 @@
 import json
 import argparse
+import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -20,12 +23,27 @@ UPLOADS_DIR = ROOT / "data" / "uploads"
 CATEGORY_ID = "27"  # Education
 
 
+def _scheduled_publish_at():
+    raw = os.getenv("YOUTUBE_SCHEDULE_PUBLIC_HOUR", "").strip()
+    if not raw:
+        return None
+    local_now = datetime.now(ZoneInfo(os.getenv("TZ", "Asia/Tokyo")))
+    target = local_now.replace(hour=int(raw), minute=0, second=0, microsecond=0)
+    if target <= local_now:
+        target += timedelta(days=1)
+    return target.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
 def _youtube_client():
     creds = get_credentials()
     return build("youtube", "v3", credentials=creds)
 
 
 def upload_video(youtube, video_path: Path, title: str, description: str, tags: list, thumbnail_path: Path = None) -> str:
+    status_body = {"privacyStatus": UPLOAD_PRIVACY, "selfDeclaredMadeForKids": False}
+    publish_at = _scheduled_publish_at() if UPLOAD_PRIVACY == "private" else None
+    if publish_at:
+        status_body["publishAt"] = publish_at
     body = {
         "snippet": {
             "title": title[:100],
@@ -33,10 +51,7 @@ def upload_video(youtube, video_path: Path, title: str, description: str, tags: 
             "tags": tags,
             "categoryId": CATEGORY_ID,
         },
-        "status": {
-            "privacyStatus": UPLOAD_PRIVACY,
-            "selfDeclaredMadeForKids": False,
-        },
+        "status": status_body,
     }
     media = MediaFileUpload(str(video_path), chunksize=-1, resumable=True, mimetype="video/mp4")
     request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)

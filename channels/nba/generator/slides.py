@@ -203,8 +203,10 @@ def make_slide(
     max_w = width - margin * 2
 
     badge_font = ImageFont.truetype(FONT_BOLD, size=int(height * 0.032))
-    title_font = ImageFont.truetype(FONT_BOLD, size=int(height * 0.055))
-    summary_font = ImageFont.truetype(FONT_REGULAR, size=int(height * 0.026))
+    # Shorts need a compact header: the old 5.5% title size could collide with
+    # the source badge and push the second title outside its scrim.
+    title_font = ImageFont.truetype(FONT_BOLD, size=int(height * 0.044))
+    summary_font = ImageFont.truetype(FONT_REGULAR, size=int(height * 0.020))
 
     title_lines = _wrap_text(draw, title, title_font, max_w)
     summary_lines = _wrap_text(draw, summary, summary_font, max_w)[:max_summary_lines]
@@ -214,7 +216,8 @@ def make_slide(
     summary_block_h = len(summary_lines) * summary_font.size * line_gap
     block_gap = height * 0.05
     total_h = title_block_h + block_gap + summary_block_h
-    y = height * anchor_y_ratio - total_h / 2
+    badge_bottom = margin + badge_font.size * 1.7
+    y = max(height * anchor_y_ratio - total_h / 2, badge_bottom + height * 0.025)
 
     scrim_pad = height * 0.03
     draw.rounded_rectangle(
