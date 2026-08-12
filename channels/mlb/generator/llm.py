@@ -44,16 +44,26 @@ def _run_gemini(prompt, schema, model=None):
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY is required when LLM_PROVIDER=gemini")
     selected = model or os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{selected}:generateContent?key={api_key}"
+    payload = {
+        "systemInstruction": {"parts": [{"text": "Return only valid JSON. Never add facts, figures, or quotes absent from the input."}]},
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json", "responseJsonSchema": schema},
+    }
     response = requests.post(
-        f"https://generativelanguage.googleapis.com/v1beta/models/{selected}:generateContent?key={api_key}",
+        url,
         headers={"content-type": "application/json"},
-        json={
-            "systemInstruction": {"parts": [{"text": "Return only valid JSON. Never add facts, figures, or quotes absent from the input."}]},
-            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json", "responseJsonSchema": schema},
-        },
+        json=payload,
         timeout=900,
     )
+    if response.status_code == 400:
+        # Some Gemini model revisions reject otherwise-valid JSON Schema
+        # keywords. Preserve JSON mode and put the schema in the prompt rather
+        # than dropping the generation altogether.
+        fallback = dict(payload)
+        fallback["contents"] = [{"role": "user", "parts": [{"text": f"JSON schema:\n{json.dumps(schema, ensure_ascii=False)}\n\n{prompt}"}]}]
+        fallback["generationConfig"] = {"temperature": 0.2, "responseMimeType": "application/json"}
+        response = requests.post(url, headers={"content-type": "application/json"}, json=fallback, timeout=900)
     response.raise_for_status()
     parts = response.json().get("candidates", [{}])[0].get("content", {}).get("parts", [])
     return _extract_json("".join(part.get("text", "") for part in parts))
