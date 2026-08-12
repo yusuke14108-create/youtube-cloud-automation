@@ -21,7 +21,7 @@ def _license_ok(meta):
     return any(x in text for x in ALLOWED) and not any(x in text for x in REJECTED)
 
 
-def _search_commons(query: str, filetype: str, session: requests.Session):
+def _search_commons(query: str, filetype: str, session: requests.Session, result_index: int = 0):
     params = {
         "action": "query", "generator": "search", "gsrsearch": f"filetype:{filetype} {query}",
         "gsrnamespace": 6, "gsrlimit": 10, "prop": "imageinfo", "iiprop": "url|extmetadata|mime",
@@ -29,6 +29,7 @@ def _search_commons(query: str, filetype: str, session: requests.Session):
     }
     response = session.get(API, params=params, timeout=25)
     response.raise_for_status()
+    matches = []
     for page in response.json().get("query", {}).get("pages", {}).values():
         info = (page.get("imageinfo") or [{}])[0]
         meta = info.get("extmetadata", {})
@@ -40,18 +41,18 @@ def _search_commons(query: str, filetype: str, session: requests.Session):
             continue
         url = info.get("url") if is_video else (info.get("thumburl") or info.get("url"))
         if _license_ok(meta) and url:
-            return {
+            matches.append({
                 "title": page.get("title", ""), "url": url,
                 "source_page": info.get("descriptionurl", ""), "author": _plain(meta.get("Artist")) or "不明",
                 "license": _plain(meta.get("LicenseShortName")) or _plain(meta.get("UsageTerms")),
-            }
-    return None
+            })
+    return matches[result_index % len(matches)] if matches else None
 
 
-def find_commons_photo(query: str, session=None):
+def find_commons_photo(query: str, session=None, result_index: int = 0):
     session = session or requests.Session()
     session.headers["User-Agent"] = USER_AGENT
-    return _search_commons(query, "bitmap", session)
+    return _search_commons(query, "bitmap", session, result_index)
 
 
 def find_commons_video(query: str, session=None):
@@ -80,7 +81,7 @@ def _download(item: dict, out_path: Path, session: requests.Session, max_bytes: 
             f.write(chunk)
 
 
-def fetch_visual_asset(query: str, out_dir: Path, stem: str, session=None):
+def fetch_visual_asset(query: str, out_dir: Path, stem: str, session=None, result_index: int = 0):
     """Fetch a license-checked still image. Gameplay/broadcast video retrieval
     is intentionally disabled, even when a search result appears reusable."""
     if not query:
@@ -90,7 +91,7 @@ def fetch_visual_asset(query: str, out_dir: Path, stem: str, session=None):
     out_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        photo = find_commons_photo(query, session)
+        photo = find_commons_photo(query, session, result_index)
     except requests.RequestException:
         photo = None
     if photo:

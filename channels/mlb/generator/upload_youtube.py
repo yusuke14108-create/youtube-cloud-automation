@@ -69,10 +69,16 @@ def main(script_path=None):
     partial_path = UPLOADS_DIR / f"{run_id}.partial.json"
     UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
     progress = json.loads(partial_path.read_text(encoding="utf-8")) if partial_path.exists() else {"longs": [], "shorts": []}
+    rendered_manifest_path = ROOT / "data" / "assets" / run_id / "licenses.json"
+    rendered_manifest = json.loads(rendered_manifest_path.read_text(encoding="utf-8")) if rendered_manifest_path.exists() else []
     credits = "\n".join(
         f"・{a.get('author')} / {a.get('license')} / {a.get('source_page')}"
         for a in data.get("visual_manifest", [])
-    ) or "・外部映像・画像なし（独自図解を使用）"
+    )
+    rendered_credits = "\n".join(
+        f"・{a.get('credit')} / {a.get('source_page')}" for a in rendered_manifest
+    )
+    credits = "\n".join(part for part in (credits, rendered_credits) if part) or "・外部映像・画像なし（独自図解を使用）"
     notice = "試合映像・放送映像の無断転載は行っていません。記録は取得時点のMLB公式データに基づきます。"
 
     long_ids = list(progress.get("longs", []))

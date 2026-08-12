@@ -2,6 +2,7 @@ import re
 
 MAX_CHUNK_LEN = 22
 BREAK_CHARS = set("はがをにでともやのねよかしば")
+NO_CHUNK_START = set("、。！？：；）】」』〉》〕ぁぃぅぇぉゃゅょっァィゥェォャュョッー")
 PREFERRED_SUFFIXES = ("しています", "して", "ています", "ました", "ません", "ため", "一方", "ただし")
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？])")
 CLAUSE_SPLIT_RE = re.compile(r"(?<=[、])")
@@ -9,14 +10,24 @@ CLAUSE_SPLIT_RE = re.compile(r"(?<=[、])")
 
 def _find_break_point(text: str, max_len: int) -> int:
     window_start = max(1, max_len - 10)
+    cut = None
     for suffix in PREFERRED_SUFFIXES:
         i = text.rfind(suffix, window_start, max_len + 1)
         if i != -1:
-            return i
-    for i in range(max_len, window_start - 1, -1):
-        if i < len(text) and text[i - 1] in BREAK_CHARS:
-            return i
-    return max_len
+            cut = i
+            break
+    if cut is None:
+        for i in range(max_len, window_start - 1, -1):
+            if i < len(text) and text[i - 1] in BREAK_CHARS:
+                cut = i
+                break
+    if cut is None:
+        cut = max_len
+    while cut > 1 and cut < len(text) and text[cut - 1].isascii() and text[cut - 1].isalnum() and text[cut].isascii() and text[cut].isalnum():
+        cut -= 1
+    while cut < len(text) and text[cut] in NO_CHUNK_START:
+        cut += 1
+    return cut
 
 
 def _hard_wrap(text: str, max_len: int) -> list:

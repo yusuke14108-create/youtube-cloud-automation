@@ -26,10 +26,11 @@ SECTION_SCHEMA = {
         "category": {"type": "string"},
         "bullet": {"type": "string"},
         "narration": {"type": "string", "minLength": 160},
+        "image_query": {"type": "string"},
         "key_points": {"type": "array", "minItems": 2, "maxItems": 3, "items": {"type": "string"}},
         "visual": VISUAL_SCHEMA,
     },
-    "required": ["item_id", "category", "bullet", "narration", "key_points", "visual"],
+    "required": ["item_id", "category", "bullet", "narration", "image_query", "key_points", "visual"],
 }
 
 LONG_SCHEMA = {
@@ -48,10 +49,11 @@ SHORT_SCHEMA = {
     "properties": {
         "item_id": {"type": "string"}, "category": {"type": "string"},
         "hook": {"type": "string"}, "script": {"type": "string", "minLength": 100},
+        "image_query": {"type": "string"},
         "source_ids": {"type": "array", "items": {"type": "string"}},
         "visual": VISUAL_SCHEMA,
     },
-    "required": ["item_id", "category", "hook", "script", "source_ids", "visual"],
+    "required": ["item_id", "category", "hook", "script", "image_query", "source_ids", "visual"],
 }
 
 GENERATE_SCHEMA = {
@@ -76,8 +78,9 @@ PROMPT = """以下はMLB公式JSONエンドポイントから取得した、日�
 - 長尺は導入、本題2〜5節、まとめの4〜7節。各節は先に要点を述べる。
 - Shortsは30〜60秒。冒頭2秒で結論につながる問いを置き、最後は長尺へ案内する。
 - 権利のある試合映像・球団ロゴ・選手写真がある前提で書かない。
-- 画面は独自図解、数値カード、比較図だけで成立させる。
-- visual.labelsは入力にある数値や短い日本語だけ。写真検索指示は禁止。
+- 画面は独自図解、数値カード、比較図に加え、権利確認済みの一般的な野球写真を多く使って成立させる。
+- 各セクションとShortsにimage_queryを必ず付ける。英語2〜4語で、baseball stadium、baseball glove、pitching moundなど一般素材を指定する。選手名、球団名、ロゴ、試合中継は指定しない。
+- visual.labelsは入力にある数値や短い日本語だけにする。
 - 選手や球団への中傷、根拠のない将来予測、賭博の推奨をしない。
 - VOICEVOX向けに英字略称を読み上げない。MLBは「メジャーリーグ」と言い換える。
 - タイトルは「【YYYY年M月D日】」で始める。

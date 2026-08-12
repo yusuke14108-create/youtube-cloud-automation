@@ -1,5 +1,6 @@
 import math
 import os
+import re
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
@@ -41,18 +42,36 @@ SOURCE_LABELS = {
 }
 
 
+_TOKEN_RE = re.compile(r"[A-Za-z0-9]+(?:[._/+:-][A-Za-z0-9]+)*|.")
+_BREAK_AFTER = set(" 、。！？：；）】」』〉》〕はがをにへでともやのねよかしばなら")
+_NO_LINE_START = set("、。！？：；）】」』〉》〕ぁぃぅぇぉゃゅょっァィゥェォャュョッー")
+
+
 def _wrap_text(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list:
+    """Wrap at Japanese phrase boundaries while keeping Latin/numeric words intact."""
+    tokens = _TOKEN_RE.findall(text)
     lines = []
-    line = ""
-    for ch in text:
-        test = line + ch
-        if line and draw.textlength(test, font=font) > max_width:
-            lines.append(line)
-            line = ch
-        else:
-            line = test
-    if line:
-        lines.append(line)
+    while tokens:
+        width_end = 0
+        for i in range(1, len(tokens) + 1):
+            if draw.textlength("".join(tokens[:i]), font=font) <= max_width:
+                width_end = i
+            else:
+                break
+        if width_end == 0:
+            width_end = 1
+        if width_end == len(tokens):
+            lines.append("".join(tokens).strip())
+            break
+        cut = width_end
+        for i in range(width_end, max(1, width_end - 9), -1):
+            if tokens[i - 1][-1] in _BREAK_AFTER and tokens[i][0] not in _NO_LINE_START:
+                cut = i
+                break
+        while cut < len(tokens) and tokens[cut][0] in _NO_LINE_START:
+            cut += 1
+        lines.append("".join(tokens[:cut]).strip())
+        tokens = tokens[cut:]
     return lines
 
 
@@ -269,9 +288,14 @@ def make_slide(
     img.convert("RGB").save(out_path)
 
 
-def make_short_slide(width: int, height: int, source: str, hook: str, out_path: Path, visual: dict = None) -> None:
+def make_short_slide(width: int, height: int, source: str, hook: str, out_path: Path, visual: dict = None, background_image_path=None) -> None:
     """Portrait layout with fixed safe zones for the hook and burned-in captions."""
-    img = _gradient_background(width, height, BG_TOP, BG_BOTTOM)
+    if background_image_path and Path(background_image_path).exists():
+        photo = ImageOps.fit(Image.open(background_image_path).convert("RGB"), (width, height), method=Image.LANCZOS)
+        wash = Image.new("RGB", (width, height), BG_TOP)
+        img = Image.blend(photo, wash, 0.48)
+    else:
+        img = _gradient_background(width, height, BG_TOP, BG_BOTTOM)
     draw = ImageDraw.Draw(img)
     _draw_decorative_circles(draw, width, height)
 
@@ -350,8 +374,16 @@ def make_section_slide(
     out_path: Path,
     visual: dict = None,
     key_points: list = None,
+    background_image_path=None,
 ) -> None:
     img = _gradient_background(width, height, BG_TOP, BG_BOTTOM)
+    has_media = bool(background_image_path) and Path(background_image_path).exists()
+    if has_media:
+        photo = ImageOps.fit(
+            Image.open(background_image_path).convert("RGB"),
+            (int(width * 0.40), int(height * 0.50)), method=Image.LANCZOS,
+        )
+        img.paste(photo, (int(width * 0.54), int(height * 0.23)))
     draw = ImageDraw.Draw(img)
     _draw_decorative_circles(draw, width, height)
 
@@ -360,7 +392,7 @@ def make_section_slide(
     text_x = margin + marker_d + int(width * 0.018)
 
     has_visual = bool(visual) and visual.get("kind", "none") != "none"
-    list_right = width * 0.48 if has_visual else width * 0.91
+    list_right = width * 0.48 if has_visual or has_media else width * 0.91
     max_w = list_right - text_x
 
     badge_font = _font(FONT_BOLD, int(height * 0.028))

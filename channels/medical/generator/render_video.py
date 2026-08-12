@@ -27,13 +27,13 @@ SHORT_SIZE = (1080, 1920)
 FPS = 25
 
 LONG_SUBTITLE_STYLE = (
-    "FontName=Hiragino Kaku Gothic ProN,FontSize=24,Bold=1,PrimaryColour=&H00FFFFFF,"
+    "FontName=Noto Sans CJK JP,FontSize=24,Bold=1,PrimaryColour=&H00FFFFFF,"
     "OutlineColour=&H00000000,BorderStyle=1,Outline=3,Shadow=0,"
     "Alignment=2,MarginL=32,MarginR=32,MarginV=40,Spacing=0.2"
 )
 
 SHORT_SUBTITLE_STYLE = (
-    "FontName=Hiragino Kaku Gothic ProN,FontSize=10,Bold=1,PrimaryColour=&H00FFFFFF,"
+    "FontName=Noto Sans CJK JP,FontSize=10,Bold=1,PrimaryColour=&H00FFFFFF,"
     "OutlineColour=&H00000000,BorderStyle=1,Outline=1.5,Shadow=0,"
     "Alignment=2,MarginL=22,MarginR=22,MarginV=70,Spacing=0.1"
 )
@@ -114,6 +114,21 @@ def render_motion_clip(asset, out_path, box, width, height, duration, variant=0,
     except RuntimeError as exc:
         print(f"[warn] motion clip from fetched asset failed, falling back: {exc}")
     render_motion_fallback(out_path, int(w), int(h), duration, variant=variant, zoom_out=zoom_out)
+
+
+def render_visual_sequence(query, out_dir, stem, session, out_path, box, width, height, duration, variant=0):
+    """Change licensed imagery roughly every 10 seconds instead of holding one image per section."""
+    count = max(2, min(4, round(duration / 10)))
+    part_duration = duration / count
+    clips = []
+    for index in range(count):
+        asset = fetch_visual_asset(query, out_dir, f"{stem}_{index + 1}", session, result_index=index)
+        clip = out_path.parent / f"{out_path.stem}_part_{index + 1}.mp4"
+        render_motion_clip(asset, clip, box, width, height, part_duration, variant + index, zoom_out=(index % 2 == 1))
+        clips.append(clip)
+    concat_file = out_path.parent / f"{out_path.stem}_parts.txt"
+    concat_file.write_text("\n".join(f"file '{clip.resolve()}'" for clip in clips), encoding="utf-8")
+    _run_ffmpeg([FFMPEG_BIN, "-y", "-f", "concat", "-safe", "0", "-i", str(concat_file), "-c", "copy", str(out_path)])
 
 
 def compose_full_frame_motion(background_path, motion_clip_path, foreground_path, out_path, box, width, height, duration) -> None:
@@ -214,10 +229,12 @@ def main(script_path=None):
             visual=section.get("visual"),
         )
 
-        asset = fetch_visual_asset(section.get("image_query", ""), asset_dir, f"long_section_{i + 1}", session)
         motion_path = video_dir / f"long_section_{i + 1}_motion.mp4"
         if not valid_video(motion_path):
-            render_motion_clip(asset, motion_path, long_box, long_w, long_h, duration, variant=i, zoom_out=(i % 2 == 1))
+            render_visual_sequence(
+                section.get("image_query", ""), asset_dir, f"long_section_{i + 1}", session,
+                motion_path, long_box, long_w, long_h, duration, variant=i * 4,
+            )
         else:
             print(f"[checkpoint] reusing valid {motion_path}")
 
@@ -246,12 +263,11 @@ def main(script_path=None):
         with wave.open(str(short_wav), "rb") as w:
             duration = w.getnframes() / w.getframerate()
 
-        asset = fetch_visual_asset(short.get("image_query", ""), asset_dir, f"short_{i}", session)
         motion_path = video_dir / f"short_{i}_motion.mp4"
         if not valid_video(motion_path):
-            render_motion_clip(
-                asset, motion_path, (0, 0, short_w, short_h), short_w, short_h, duration,
-                variant=i, zoom_out=(i % 2 == 0),
+            render_visual_sequence(
+                short.get("image_query", ""), asset_dir, f"short_{i}", session,
+                motion_path, (0, 0, short_w, short_h), short_w, short_h, duration, variant=i * 4,
             )
         else:
             print(f"[checkpoint] reusing valid {motion_path}")

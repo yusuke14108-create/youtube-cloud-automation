@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import re
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
@@ -32,18 +33,36 @@ SOURCE_LABELS = {
 }
 
 
+_TOKEN_RE = re.compile(r"[A-Za-z0-9]+(?:[._/+:-][A-Za-z0-9]+)*|.")
+_BREAK_AFTER = set(" 、。！？：；）】」』〉》〕はがをにへでともやのねよかしばなら")
+_NO_LINE_START = set("、。！？：；）】」』〉》〕ぁぃぅぇぉゃゅょっァィゥェォャュョッー")
+
+
 def _wrap_text(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list:
+    """Wrap at Japanese phrase boundaries while keeping Latin/numeric words intact."""
+    tokens = _TOKEN_RE.findall(text)
     lines = []
-    line = ""
-    for ch in text:
-        test = line + ch
-        if line and draw.textlength(test, font=font) > max_width:
-            lines.append(line)
-            line = ch
-        else:
-            line = test
-    if line:
-        lines.append(line)
+    while tokens:
+        width_end = 0
+        for i in range(1, len(tokens) + 1):
+            if draw.textlength("".join(tokens[:i]), font=font) <= max_width:
+                width_end = i
+            else:
+                break
+        if width_end == 0:
+            width_end = 1
+        if width_end == len(tokens):
+            lines.append("".join(tokens).strip())
+            break
+        cut = width_end
+        for i in range(width_end, max(1, width_end - 9), -1):
+            if tokens[i - 1][-1] in _BREAK_AFTER and tokens[i][0] not in _NO_LINE_START:
+                cut = i
+                break
+        while cut < len(tokens) and tokens[cut][0] in _NO_LINE_START:
+            cut += 1
+        lines.append("".join(tokens[:cut]).strip())
+        tokens = tokens[cut:]
     return lines
 
 

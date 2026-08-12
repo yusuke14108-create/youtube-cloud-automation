@@ -2,6 +2,7 @@ import re
 
 MAX_CHUNK_LEN = 20
 BREAK_CHARS = set("はがをにでともやのねよかしば")
+NO_CHUNK_START = set("、。！？：；）】」』〉》〕ぁぃぅぇぉゃゅょっァィゥェォャュョッー")
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？])")
 CLAUSE_SPLIT_RE = re.compile(r"(?<=[、])")
 
@@ -10,8 +11,15 @@ def _find_break_point(text: str, max_len: int) -> int:
     window_start = max(1, max_len - 6)
     for i in range(max_len, window_start - 1, -1):
         if i < len(text) and text[i - 1] in BREAK_CHARS:
-            return i
-    return max_len
+            cut = i
+            break
+    else:
+        cut = max_len
+    while cut > 1 and cut < len(text) and text[cut - 1].isascii() and text[cut - 1].isalnum() and text[cut].isascii() and text[cut].isalnum():
+        cut -= 1
+    while cut < len(text) and text[cut] in NO_CHUNK_START:
+        cut += 1
+    return cut
 
 
 def _hard_wrap(text: str, max_len: int) -> list:
