@@ -110,7 +110,8 @@ def _video_ready(script_path):
 
 def main(allow_upload=True):
     today = now_local().strftime("%Y%m%d")
-    existing = sorted(upload_youtube.UPLOADS_DIR.glob(f"{today}_*.json"))
+    run_key = today + os.getenv("PIPELINE_RUN_SUFFIX", "")
+    existing = sorted(upload_youtube.UPLOADS_DIR.glob(f"{run_key}_*.json"))
     if len(existing) >= DAILY_LONG_VIDEOS:
         return [json.loads(path.read_text(encoding="utf-8")) for path in existing]
 
@@ -118,7 +119,7 @@ def main(allow_upload=True):
         print("[daily] another run is already in progress, skipping")
         return None
     try:
-        state = pipeline_state.load(today)
+        state = pipeline_state.load(run_key)
         if not state["topics"]:
             new_items_path = Path(state["new_items_path"]) if state.get("new_items_path") else crawler_main.main()
             if new_items_path is None:

@@ -7,7 +7,7 @@ from unittest.mock import patch
 from generator.run_daily import allocate_short_counts
 from generator.visual_media import _license_ok
 from generator import upload_youtube
-from generator.generate_scripts import GENERATE_PROMPT_TEMPLATE, GENERATE_SCHEMA
+from generator.generate_scripts import GENERATE_PROMPT_TEMPLATE, GENERATE_SCHEMA, _normalize_display_names
 
 
 class PipelineTests(unittest.TestCase):
@@ -17,6 +17,10 @@ class PipelineTests(unittest.TestCase):
         self.assertIn("長尺動画（3〜5分）", GENERATE_PROMPT_TEMPLATE)
         self.assertIn("hookは必ず主役の選手名から始め", GENERATE_PROMPT_TEMPLATE)
         self.assertIn("詳しくは関連動画へ", GENERATE_PROMPT_TEMPLATE)
+
+    def test_reading_hints_never_leak_into_visible_text(self):
+        fixed = _normalize_display_names({"title": "かわむら ゆうきと、はちむら るい"})
+        self.assertEqual(fixed["title"], "河村勇輝と、八村塁")
 
     def test_short_allocation(self):
         self.assertEqual(allocate_short_counts(2, 3), [1, 2])

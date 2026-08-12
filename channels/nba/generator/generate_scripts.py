@@ -100,7 +100,7 @@ URLの本文と、可能なら記事内で示されたチーム・リーグ・�
 バスケットボール初心者にも、戦術用語を短く説明してください。選手への敬意を保ち、誹謗中傷や国籍による過剰な持ち上げを避けてください。
 
 narrationではNBAなどのアルファベット略称を読み上げ用の日本語へ直すこと（例: NBAは「エヌビーエー」）。略称は画面表示用のsummaryやbulletでは使ってよい。
-固有名詞は一次情報の記事表記に一致させること。河村勇輝は「かわむら ゆうき」、八村塁は「はちむら るい」と読む。推測で別の読みや表記を作らない。
+固有名詞は一次情報の記事表記に一致させること。画面表示と台本文字列は必ず「河村勇輝」「八村塁」の正式漢字を使い、ひらがな表記に変換しない。音声の読みはシステム側の辞書で処理するため、台本へ読み仮名を書かない。
 
 ## 過去動画の視聴傾向（参考情報）
 {performance_digest}
@@ -126,6 +126,25 @@ def fetch_source_excerpt(url: str) -> str:
         return f"本文取得失敗: {exc}。URLを直接確認し、確認できない数値は使用しないでください。"
 
 
+DISPLAY_NAME_FIXES = {
+    "かわむら ゆうき": "河村勇輝", "かわむらゆうき": "河村勇輝",
+    "はちむら るい": "八村塁", "はちむらるい": "八村塁",
+    "とみなが けいせい": "富永啓生", "とみながけいせい": "富永啓生",
+}
+
+
+def _normalize_display_names(value):
+    if isinstance(value, str):
+        for reading, written in DISPLAY_NAME_FIXES.items():
+            value = value.replace(reading, written)
+        return value
+    if isinstance(value, list):
+        return [_normalize_display_names(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _normalize_display_names(item) for key, item in value.items()}
+    return value
+
+
 def main(selected_path=None, short_count=3):
     path = selected_path or latest_selected_file()
     if path is None:
@@ -142,7 +161,7 @@ def main(selected_path=None, short_count=3):
     schema = copy.deepcopy(GENERATE_SCHEMA)
     schema["properties"]["short_scripts"]["minItems"] = short_count
     schema["properties"]["short_scripts"]["maxItems"] = short_count
-    result = run(prompt, schema, allowed_tools=["WebFetch"])
+    result = _normalize_display_names(run(prompt, schema, allowed_tools=["WebFetch"]))
 
     # --json-schema doesn't reliably enforce "required" inside array items, so the model
     # sometimes omits "visual" entirely rather than sending {"kind": "none"}. Normalize here

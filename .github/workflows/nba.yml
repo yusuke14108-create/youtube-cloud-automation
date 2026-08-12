@@ -2,6 +2,12 @@ name: NBA daily video
 
 on:
   workflow_dispatch:
+    inputs:
+      force_fresh_test:
+        description: "Ignore today's cached pipeline state for a fresh private test"
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: "17 20 * * *" # 05:17 JST
 
@@ -28,6 +34,7 @@ jobs:
       ENABLE_UPLOAD: "true"
       ENABLE_AUTO_PUBLISH: ${{ vars.ENABLE_AUTO_PUBLISH || 'false' }}
       FFMPEG_TIMEOUT: "3600"
+      PIPELINE_RUN_SUFFIX: ${{ inputs.force_fresh_test && format('_test_{0}', github.run_id) || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
