@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from generator.run_daily import allocate_short_counts
 from generator.visual_media import _license_ok
+from generator.visual_media import _person_title_matches
 from generator import upload_youtube
 from generator.generate_scripts import GENERATE_PROMPT_TEMPLATE, GENERATE_SCHEMA, _normalize_display_names
 
@@ -32,6 +33,10 @@ class PipelineTests(unittest.TestCase):
         rejected = {"LicenseShortName": {"value": "CC BY-NC 4.0"}}
         self.assertTrue(_license_ok(allowed))
         self.assertFalse(_license_ok(rejected))
+
+    def test_player_photo_search_rejects_unrelated_people(self):
+        self.assertTrue(_person_title_matches("Yuki Kawamura", "File:Yuki_Kawamura.jpg"))
+        self.assertFalse(_person_title_matches("Yuki Kawamura", "Australia_vs_Japan_World_Cup.jpg"))
 
     def test_upload_resume_reuses_completed_long_video(self):
         with tempfile.TemporaryDirectory() as temp:

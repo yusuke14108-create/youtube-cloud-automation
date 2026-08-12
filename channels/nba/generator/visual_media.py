@@ -12,6 +12,21 @@ REJECTED = ("-nc", "noncommercial", "-nd", "no derivatives")
 USER_AGENT = "JapanesePlayersBasketballNews/1.0 (licensed still-image retrieval)"
 
 
+def _named_person_query(query: str) -> bool:
+    words = re.findall(r"[A-Za-z]{3,}", query)
+    return len(words) >= 2 and all(word[0].isupper() for word in words[:2])
+
+
+def _person_title_matches(query: str, title: str) -> bool:
+    if not _named_person_query(query):
+        return True
+    query_words = [word.lower() for word in re.findall(r"[A-Za-z]{3,}", query)]
+    normalized_title = title.lower().replace("_", " ")
+    # Require the surname/last search token. This rejects visually unrelated
+    # results returned for a common first name such as "Yuki".
+    return query_words[-1] in normalized_title
+
+
 def _plain(value):
     return re.sub(r"<[^>]+>", "", (value or {}).get("value", "")).strip()
 
@@ -31,6 +46,8 @@ def _search_commons(query: str, filetype: str, session: requests.Session, result
     response.raise_for_status()
     matches = []
     for page in response.json().get("query", {}).get("pages", {}).values():
+        if not _person_title_matches(query, page.get("title", "")):
+            continue
         info = (page.get("imageinfo") or [{}])[0]
         meta = info.get("extmetadata", {})
         mime = info.get("mime", "")
