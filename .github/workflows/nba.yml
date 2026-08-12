@@ -56,6 +56,8 @@ jobs:
       - name: Verify upload destination
         working-directory: .
         run: python scripts/verify_youtube_channel.py --credentials-dir channels/nba/credentials --expected-id UC-bnuR5UppuY_cnpLTxWyaA --expected-title "バスケ魂🔥 日本人NBA速報"
+      - name: Refresh audience performance guidance
+        run: python -m generator.performance
       - name: Start VOICEVOX
         run: |
           docker run -d --name voicevox -p 127.0.0.1:50021:50021 voicevox/voicevox_engine:cpu-latest

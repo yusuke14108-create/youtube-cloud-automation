@@ -14,6 +14,7 @@ DIGEST_PATH = ANALYTICS_DIR / "nba_digest.txt"
 HISTORY_PATH = ANALYTICS_DIR / "nba_history.json"
 
 MIN_VIDEOS_FOR_DIGEST = 5
+MIN_SHORTS_FOR_DIGEST = 3
 NO_DATA_DIGEST = "過去動画のデータがまだ少ないため、傾向分析はまだ行えません。構成やテーマは多様に試してください。"
 
 
@@ -111,25 +112,29 @@ def build_digest() -> str:
 
     longs = [r for r in records if r["kind"] == "long" and r["stats"]]
 
-    if len(longs) < MIN_VIDEOS_FOR_DIGEST:
+    shorts = [r for r in records if r["kind"] == "short" and r["stats"]]
+
+    if len(longs) < MIN_VIDEOS_FOR_DIGEST and len(shorts) < MIN_SHORTS_FOR_DIGEST:
         DIGEST_PATH.write_text(NO_DATA_DIGEST, encoding="utf-8")
         return NO_DATA_DIGEST
 
-    longs.sort(key=lambda r: r["stats"]["avg_view_pct"], reverse=True)
-    top = longs[:3]
-    bottom = longs[-3:]
-
-    lines = ["過去の長尺動画の視聴維持率ランキング（上位が好調、下位が不調）:"]
-    for r in top:
-        lines.append(
-            f"- 好調: 「{r['title']}」(維持率{r['stats']['avg_view_pct']:.0f}%, "
-            f"構成={r['format']}/{r['section_count']}セクション, 出典={r['source']})"
-        )
-    for r in bottom:
-        lines.append(
-            f"- 不調: 「{r['title']}」(維持率{r['stats']['avg_view_pct']:.0f}%, "
-            f"構成={r['format']}/{r['section_count']}セクション, 出典={r['source']})"
-        )
+    lines = []
+    if longs:
+        longs.sort(key=lambda r: r["stats"]["avg_view_pct"], reverse=True)
+        lines.append("過去の長尺動画の視聴維持率:")
+        for r in longs[:3]:
+            lines.append(
+                f"- 長尺好調: 「{r['title']}」(再生{r['stats']['views']}, 維持率{r['stats']['avg_view_pct']:.0f}%, "
+                f"構成={r['format']}/{r['section_count']}セクション)"
+            )
+    if shorts:
+        shorts.sort(key=lambda r: (r["stats"]["views"], r["stats"]["avg_view_pct"]), reverse=True)
+        lines.append("過去のShortsの反応（再生数を優先）:")
+        for r in shorts[:5]:
+            lines.append(
+                f"- Shorts好調: 「{r['hook']}」(再生{r['stats']['views']}, "
+                f"維持率{r['stats']['avg_view_pct']:.0f}%, 高評価{r['stats']['likes']})"
+            )
     lines.append("この傾向を参考にしつつ、同じテーマ・構成を毎回繰り返さないこと。")
 
     digest = "\n".join(lines)

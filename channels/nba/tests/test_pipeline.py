@@ -7,9 +7,17 @@ from unittest.mock import patch
 from generator.run_daily import allocate_short_counts
 from generator.visual_media import _license_ok
 from generator import upload_youtube
+from generator.generate_scripts import GENERATE_PROMPT_TEMPLATE, GENERATE_SCHEMA
 
 
 class PipelineTests(unittest.TestCase):
+    def test_audience_improvement_rules_are_part_of_generation_prompt(self):
+        self.assertEqual(GENERATE_SCHEMA["properties"]["long_sections"]["minItems"], 4)
+        self.assertEqual(GENERATE_SCHEMA["properties"]["long_sections"]["maxItems"], 5)
+        self.assertIn("長尺動画（3〜5分）", GENERATE_PROMPT_TEMPLATE)
+        self.assertIn("hookは必ず日本人選手名から始め", GENERATE_PROMPT_TEMPLATE)
+        self.assertIn("詳しくは関連動画へ", GENERATE_PROMPT_TEMPLATE)
+
     def test_short_allocation(self):
         self.assertEqual(allocate_short_counts(2, 3), [1, 2])
         self.assertEqual(allocate_short_counts(1, 2), [2])
