@@ -2,6 +2,12 @@ name: MLB daily video
 
 on:
   workflow_dispatch:
+    inputs:
+      short_test:
+        description: "Generate one fresh MLB Short and upload it privately"
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: "17 18 * * *" # 03:17 JST; finish private upload before 05:00
 
@@ -62,7 +68,13 @@ jobs:
           docker run -d --name voicevox -p 127.0.0.1:50021:50021 voicevox/voicevox_engine:cpu-latest
           for i in $(seq 1 60); do curl -fsS http://127.0.0.1:50021/version && break; sleep 3; done
           curl -fsS http://127.0.0.1:50021/version
+      - name: Generate one fresh test Short privately
+        if: inputs.short_test == true
+        env:
+          YOUTUBE_SCHEDULE_PUBLIC_HOUR: ""
+        run: python -m generator.short_test
       - name: Generate and upload privately
+        if: inputs.short_test != true
         run: python -m generator.scheduled_generate
       - name: Quality gate
         working-directory: .
