@@ -74,6 +74,7 @@ PROMPT = """以下はMLB公式JSONエンドポイントから取得した、日�
 厳守事項:
 - 入力にない移籍、故障、発言、球速、順位、記録、評価を作らない。
 - 数字は入力値だけを使う。試合が未終了なら確定結果として語らない。
+- game_pkやURL内の数字はAPI内部識別子であり、試合数・背番号・記録ではない。タイトル、台本、画面表示で読み上げない。
 - source_idsには、根拠にしたfactsのplayer_idを文字列で入れる。
 - 長尺は導入、本題2〜5節、まとめの4〜7節。各節は先に要点を述べる。
 - Shortsは30〜60秒。冒頭2秒で結論につながる問いを置き、背景、根拠、結論まで各Shorts内で完結させる。長尺を見ないと意味が通らない予告編にしない。長尺への案内は必須ではなく、入れる場合も結論後の一言だけにする。
@@ -101,7 +102,16 @@ def main(selected_path=None):
     if path is None:
         return None
     packet = json.loads(path.read_text(encoding="utf-8"))
-    result = run(PROMPT.format(facts=json.dumps(packet, ensure_ascii=False, indent=2), performance=load_digest()), GENERATE_SCHEMA)
+    # game_pk is an internal MLB API lookup key, not a human-readable game
+    # number. Keeping it in the prompt caused phrases such as「第823916試合」.
+    prompt_packet = {
+        **packet,
+        "facts": [
+            {key: value for key, value in fact.items() if key != "game_pk"}
+            for fact in packet.get("facts", [])
+        ],
+    }
+    result = run(PROMPT.format(facts=json.dumps(prompt_packet, ensure_ascii=False, indent=2), performance=load_digest()), GENERATE_SCHEMA)
     prefix = datetime.now().strftime("【%Y年%-m月%-d日】")
     if not 1 <= len(result["long_videos"]) <= 2 or not 2 <= len(result["short_videos"]) <= 3:
         raise ValueError("output must contain 1-2 long videos and 2-3 Shorts")
