@@ -141,7 +141,7 @@ def main(script_path=None):
         if valid_wav(wav_path) and valid_text(srt_path):
             print(f"[checkpoint] reusing valid {wav_path}")
         else:
-            synthesize_text(session, short["script"], wav_path, srt_path, caption_max_len=18)
+            synthesize_text(session, short["script"], wav_path, srt_path, caption_max_len=14)
             print(f"[info] wrote {wav_path}")
 
     return out_dir

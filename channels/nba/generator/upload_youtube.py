@@ -143,7 +143,7 @@ def main(script_path=None):
     short_ids = []
     for i, short in enumerate(data["short_scripts"], start=1):
         short_title = f"{short['hook']} #Shorts"
-        short_description = f"{short['script']}\n\n詳しくはこちら: https://youtu.be/{long_id}"
+        short_description = f"{short['script']}\n\n関連する長尺解説（任意）: https://youtu.be/{long_id}"
         short_id = progress.get("shorts", {}).get(str(i))
         if not short_id:
             short_id = upload_video(

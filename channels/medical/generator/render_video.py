@@ -33,9 +33,9 @@ LONG_SUBTITLE_STYLE = (
 )
 
 SHORT_SUBTITLE_STYLE = (
-    "FontName=Noto Sans CJK JP,FontSize=14,Bold=1,PrimaryColour=&H00FFFFFF,"
+    "FontName=Noto Sans CJK JP,FontSize=12,Bold=1,PrimaryColour=&H00FFFFFF,"
     "OutlineColour=&H00101010,BorderStyle=1,Outline=0.8,Shadow=0,"
-    "Alignment=2,MarginL=28,MarginR=28,MarginV=76,Spacing=0.1"
+    "Alignment=2,MarginL=96,MarginR=96,MarginV=96,Spacing=0.1,WrapStyle=2"
 )
 
 

@@ -158,7 +158,7 @@ def main(script_path=None, validate_only=False):
         matching = next((s for s in source_items if s["id"] == short.get("item_id")), None)
         source_line = f"\n出典: {matching['url']}" if matching else ""
         short_description = (
-            f"{short['script']}\n\n詳しくはこちら: https://youtu.be/{long_id}"
+            f"{short['script']}\n\n関連する長尺解説（任意）: https://youtu.be/{long_id}"
             f"{source_line}\n\nVOICEVOX:ずんだもん"
         )
         short_id = checkpoint.get("shorts", {}).get(str(i))

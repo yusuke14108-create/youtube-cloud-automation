@@ -137,7 +137,7 @@ def main(script_path=None):
     for i, short in enumerate(data["short_videos"], start=1):
         wav_path = out_dir / f"short_{i}.wav"
         srt_path = out_dir / f"short_{i}.srt"
-        synthesize_text(session, short["script"], wav_path, srt_path, caption_max_len=18)
+        synthesize_text(session, short["script"], wav_path, srt_path, caption_max_len=14)
         print(f"[info] wrote {wav_path}")
 
     return out_dir

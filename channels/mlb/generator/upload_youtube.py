@@ -121,7 +121,7 @@ def main(script_path=None):
             continue
         long_link = f"https://youtu.be/{long_ids[0]}" if long_ids else ""
         description = (
-            f"{short['script']}\n\n長尺版: {long_link}\n\n情報源:\n{_sources(data, short['source_ids'])}"
+            f"{short['script']}\n\n関連する長尺解説（任意）: {long_link}\n\n情報源:\n{_sources(data, short['source_ids'])}"
             f"\n\n{notice}\n\nVOICEVOX:ずんだもん"
         )
         short_ids.append(upload_video(

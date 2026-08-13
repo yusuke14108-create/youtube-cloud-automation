@@ -82,29 +82,16 @@ def _download(item: dict, out_path: Path, session: requests.Session, max_bytes: 
 
 
 def fetch_visual_asset(query: str, out_dir: Path, stem: str, session=None, result_index: int = 0):
-    """Try a licensed Commons video clip first, fall back to a photo.
-    Returns {"kind": "video"|"photo", "local_path", "credit", "source_page"} or None."""
+    """Fetch a clearly identifiable, licensed Commons photo.
+
+    Multiple specific stills are easier to understand and crop consistently
+    than generic medical footage, especially in the vertical Shorts layout.
+    """
     if not query:
         return None
     session = session or requests.Session()
     session.headers["User-Agent"] = USER_AGENT
     out_dir.mkdir(parents=True, exist_ok=True)
-
-    try:
-        video = find_commons_video(query, session)
-    except requests.RequestException:
-        video = None
-    if video:
-        suffix = Path(urlparse(video["url"]).path).suffix.lower() or ".webm"
-        path = out_dir / f"{stem}{suffix}"
-        try:
-            _download(video, path, session, max_bytes=MAX_DOWNLOAD_BYTES)
-            return {
-                "kind": "video", "local_path": str(path),
-                "credit": f"{video['author']} / {video['license']}", "source_page": video["source_page"],
-            }
-        except requests.RequestException:
-            pass
 
     try:
         photo = find_commons_photo(query, session, result_index)

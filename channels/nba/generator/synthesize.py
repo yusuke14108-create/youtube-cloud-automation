@@ -103,7 +103,7 @@ def synthesize_text(session: requests.Session, text: str, out_wav_path: Path, ou
     captions = chunks_to_captions(chunks, durations)
     # Fix the two-line layout before libass renders it; automatic wrapping can
     # otherwise split a word even when the cue boundary itself is correct.
-    write_srt(captions, out_srt_path, max_line_len=14)
+    write_srt(captions, out_srt_path, max_line_len=12)
     return sum(durations)
 
 

@@ -22,7 +22,8 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(GENERATE_SCHEMA["properties"]["long_sections"]["maxItems"], 5)
         self.assertIn("長尺動画（3〜5分）", GENERATE_PROMPT_TEMPLATE)
         self.assertIn("hookは必ず主役の選手名から始め", GENERATE_PROMPT_TEMPLATE)
-        self.assertIn("詳しくは関連動画へ", GENERATE_PROMPT_TEMPLATE)
+        self.assertIn("各Shorts内で完結", GENERATE_PROMPT_TEMPLATE)
+        self.assertIn("長尺への誘導は必須ではなく", GENERATE_PROMPT_TEMPLATE)
 
     def test_reading_hints_never_leak_into_visible_text(self):
         fixed = _normalize_display_names({"title": "かわむら ゆうきと、はちむら るい"})
