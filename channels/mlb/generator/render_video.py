@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -53,6 +54,56 @@ SHORT_SUBTITLE_STYLE = (
     "OutlineColour=&H00101010,BorderStyle=1,Outline=0.8,Shadow=0,"
     "Alignment=2,MarginL=170,MarginR=170,MarginV=155,Spacing=0,WrapStyle=2,ScaleX=94"
 )
+
+_SRT_BLOCK_RE = re.compile(
+    r"\d+\s*\n(\d{2}):(\d{2}):(\d{2}),(\d{3})\s+-->\s+"
+    r"(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*\n(.*?)(?=\n\s*\n|\Z)",
+    re.DOTALL,
+)
+
+
+def _ass_time(parts) -> str:
+    hours, minutes, seconds, millis = map(int, parts)
+    return f"{hours}:{minutes:02d}:{seconds:02d}.{millis // 10:02d}"
+
+
+def _write_short_ass(srt_path: Path) -> Path:
+    """Convert captions to explicit-resolution ASS for deterministic burn-in.
+
+    SRT force_style uses libass defaults whose virtual canvas can vary by
+    runner.  That made subtitles either tiny or effectively outside the safe
+    area.  A 1080x1920 ASS canvas fixes their size and position.
+    """
+    events = []
+    for match in _SRT_BLOCK_RE.finditer(srt_path.read_text(encoding="utf-8")):
+        groups = match.groups()
+        start = _ass_time(groups[:4])
+        end = _ass_time(groups[4:8])
+        text = groups[8].strip().replace("\n", r"\N")
+        text = text.replace('<font color="#FFCF40">', r"{\c&H40CFFF&}")
+        text = text.replace("</font>", r"{\c&HFFFFFF&}")
+        text = text.replace(",", "，")
+        events.append(f"Dialogue: 0,{start},{end},Short,,0,0,0,,{text}")
+
+    ass_path = srt_path.with_suffix(".ass")
+    header = """[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Short,Noto Sans CJK JP,54,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,-1,0,0,0,94,100,0,0,1,3,0,2,135,135,170,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+    ass_path.write_text(header + "\n".join(events) + "\n", encoding="utf-8")
+    if not events:
+        raise RuntimeError(f"no subtitle events parsed from {srt_path}")
+    return ass_path
 
 
 def _escape_for_filter(path: Path) -> str:
@@ -114,7 +165,8 @@ def render_deck(image_paths: list, durations: list, wav_path: Path, srt_path: Pa
 
 def render_short_motion(background_path: Path, overlay_path: Path, duration: float, wav_path: Path, srt_path: Path, out_path: Path) -> None:
     """Animate a portrait hero frame while keeping subtitles in the safe zone."""
-    subtitles_arg = f"subtitles=filename='{_escape_for_filter(srt_path)}':force_style='{SHORT_SUBTITLE_STYLE}'"
+    ass_path = _write_short_ass(srt_path)
+    subtitles_arg = f"ass=filename='{_escape_for_filter(ass_path)}'"
     frames = max(1, round(duration * 25))
     # Slow push-in plus a slight horizontal drift.  Scale first so zoompan can
     # crop without exposing an edge; subtitles are applied after the movement.

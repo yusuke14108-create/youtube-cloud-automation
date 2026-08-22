@@ -29,7 +29,7 @@ def main():
                 "二刀流の現在地を示す、大きな節目となりました。"
             ),
             "image_query": "Shohei Ohtani baseball",
-            "illustration_path": "assets/illustrations/ohtani-two-way-20260823.png",
+            "illustration_path": "assets/illustrations/ohtani-two-way-20260823-v2.png",
             "asset_kind": "illustration",
             "motion_style": "editorial_push",
             "source_ids": ["660271"],
