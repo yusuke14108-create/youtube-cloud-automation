@@ -7,7 +7,7 @@ import requests
 from generator.config import FFMPEG_BIN
 
 from generator.slides import make_abstract_panel_bg, make_background, make_section_foreground, make_slide, section_panel_box
-from generator.visual_media import fetch_visual_asset
+from generator.visual_media import fetch_visual_asset, load_recent_source_pages
 
 ROOT = Path(__file__).resolve().parent.parent
 AUDIO_DIR = ROOT / "data" / "audio"
@@ -108,15 +108,20 @@ def render_motion_clip(asset, out_path, box, width, height, duration, variant=0,
     render_motion_fallback(out_path, int(w), int(h), duration, variant=variant, zoom_out=zoom_out)
 
 
-def render_visual_sequence(query, out_dir, stem, session, out_path, box, width, height, duration, variant=0):
+def render_visual_sequence(query, out_dir, stem, session, out_path, box, width, height, duration, variant=0, used_source_pages=None):
     """Change licensed imagery roughly every 10 seconds instead of holding one image per section."""
     count = max(2, min(4, round(duration / 10)))
     part_duration = duration / count
     clips, assets = [], []
+    used_source_pages = used_source_pages if used_source_pages is not None else set()
     for index in range(count):
-        asset = fetch_visual_asset(query, out_dir, f"{stem}_{index + 1}", session, result_index=index)
+        asset = fetch_visual_asset(
+            query, out_dir, f"{stem}_{index + 1}", session,
+            result_index=variant + index, exclude_source_pages=used_source_pages,
+        )
         if asset:
             assets.append(asset)
+            used_source_pages.add(asset["source_page"])
         clip = out_path.parent / f"{out_path.stem}_part_{index + 1}.mp4"
         render_motion_clip(asset, clip, box, width, height, part_duration, variant + index, zoom_out=(index % 2 == 1))
         clips.append(clip)
@@ -206,6 +211,7 @@ def main(script_path=None):
 
     session = requests.Session()
     asset_manifest = []
+    used_source_pages = load_recent_source_pages(run_id)
 
     long_bg = video_dir / "long_bg.png"
     make_background(*LONG_SIZE, long_bg)
@@ -227,6 +233,7 @@ def main(script_path=None):
         assets = render_visual_sequence(
             section.get("image_query", ""), asset_dir, f"long_section_{i + 1}", session,
             motion_path, long_box, long_w, long_h, duration, variant=i * 4,
+            used_source_pages=used_source_pages,
         )
         asset_manifest.extend({k: asset.get(k) for k in ("usage", "query", "credit", "source_page")} for asset in assets)
 
@@ -257,6 +264,7 @@ def main(script_path=None):
         assets = render_visual_sequence(
             short.get("image_query", ""), asset_dir, f"short_{i}", session,
             motion_path, (0, 0, short_w, short_h), short_w, short_h, duration, variant=i * 4,
+            used_source_pages=used_source_pages,
         )
         asset_manifest.extend({k: asset.get(k) for k in ("usage", "query", "credit", "source_page")} for asset in assets)
 

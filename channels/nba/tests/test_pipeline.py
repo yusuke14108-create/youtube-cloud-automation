@@ -10,6 +10,7 @@ from generator.run_daily import allocate_short_counts
 from generator.visual_media import _license_ok
 from generator.visual_media import _person_title_matches
 from generator.visual_media import _basketball_context_matches
+from generator.visual_media import load_recent_source_pages
 from generator.captions import caption_display_text, text_to_caption_chunks
 from generator.pronunciation import for_speech
 from generator import upload_youtube
@@ -48,6 +49,20 @@ class PipelineTests(unittest.TestCase):
     def test_other_sports_are_rejected_from_nba_visuals(self):
         self.assertFalse(_basketball_context_matches("Yuki Kawamura", "Japan football World Cup.jpg"))
         self.assertTrue(_basketball_context_matches("Yuki Kawamura", "Yuki Kawamura basketball.jpg"))
+
+    def test_recent_asset_manifest_prevents_image_reuse(self):
+        with tempfile.TemporaryDirectory() as temp:
+            assets = Path(temp)
+            run = assets / "20260821"
+            run.mkdir()
+            (run / "licenses.json").write_text(json.dumps([
+                {"source_page": "https://commons.wikimedia.org/wiki/File:used.jpg"},
+                {"source_page": "https://commons.wikimedia.org/wiki/File:used-again.jpg"},
+            ]), encoding="utf-8")
+            with patch("generator.visual_media.ASSET_DIR", assets):
+                pages = load_recent_source_pages("20260822")
+            self.assertIn("https://commons.wikimedia.org/wiki/File:used.jpg", pages)
+            self.assertIn("https://commons.wikimedia.org/wiki/File:used-again.jpg", pages)
 
     def test_caption_breaks_preserve_words_and_particles(self):
         chunks = text_to_caption_chunks("河村勇輝がクリッパーズを選んだ理由とは何なのか。", max_len=14)

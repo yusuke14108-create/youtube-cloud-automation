@@ -110,6 +110,7 @@ def main(script_path=None):
         data["title"],
         thumb_path,
         background_image_path=background["local_path"] if background else None,
+        variant=sum(run_id.encode("utf-8")) % 3,
     )
     if background:
         print(f"[info] thumbnail background credit: {background['credit']} ({background['source_page']})")

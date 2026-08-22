@@ -372,7 +372,7 @@ def make_section_foreground(
 
 
 def make_thumbnail(
-    source: str, thumbnail_text: str, title: str, out_path: Path, background_image_path=None
+    source: str, thumbnail_text: str, title: str, out_path: Path, background_image_path=None, variant: int = 0
 ) -> None:
     width, height = 1280, 720
 
@@ -398,14 +398,23 @@ def make_thumbnail(
     draw.rounded_rectangle([margin, margin, margin + badge_w, margin + badge_h], radius=badge_h / 2, fill=(255, 255, 255))
     draw.text((margin + badge_pad_x, margin + badge_pad_y), badge_text, font=badge_font, fill=THUMB_BG_BOTTOM)
 
-    text_lines = _wrap_text(draw, thumbnail_text, text_font, width - margin * 2)[:2]
+    variant %= 3
+    # Rotate composition as well as imagery. This prevents every upload from
+    # looking like the same centered template with different words.
+    text_max_width = width - margin * 2 if variant == 0 else int(width * 0.70)
+    text_lines = _wrap_text(draw, thumbnail_text, text_font, text_max_width)[:2]
     line_gap = 1.1
     block_h = len(text_lines) * text_font.size * line_gap
-    y = (height - block_h) / 2
+    y = (height - block_h) / 2 if variant != 2 else height * 0.20
     shadow_offset = max(4, int(height * 0.008))
     for line in text_lines:
         w = draw.textlength(line, font=text_font)
-        x = (width - w) / 2
+        if variant == 0:
+            x = (width - w) / 2
+        elif variant == 1:
+            x = margin
+        else:
+            x = width - margin - w
         draw.text((x + shadow_offset, y + shadow_offset), line, font=text_font, fill=(0, 0, 0))
         draw.text(
             (x, y),
@@ -421,8 +430,9 @@ def make_thumbnail(
     y2 = height - margin - len(title_lines) * title_font.size * 1.3
     for line in title_lines:
         w = draw.textlength(line, font=title_font)
+        title_x = (width - w) / 2 if variant == 0 else (margin if variant == 1 else width - margin - w)
         draw.text(
-            ((width - w) / 2, y2),
+            (title_x, y2),
             line,
             font=title_font,
             fill=(255, 255, 255),
