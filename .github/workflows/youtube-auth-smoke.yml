@@ -1,0 +1,59 @@
+name: YouTube OAuth smoke test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify ${{ matrix.channel }} destination
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - channel: medical
+            token_secret: MEDICAL_YT_TOKEN_JSON
+            client_secret: MEDICAL_YT_CLIENT_SECRET_JSON
+            expected_id: UCG7vSxIAPl-Zuv5y0uWJYwg
+            expected_title: 医療と医学の最新ニュース
+          - channel: mlb
+            token_secret: MLB_YT_TOKEN_JSON
+            client_secret: MLB_YT_CLIENT_SECRET_JSON
+            expected_id: UCwl8YMNbXi-zhaD4zeSwB5g
+            expected_title: メジャー魂🔥 日本人MLB速報
+          - channel: nba
+            token_secret: NBA_YT_TOKEN_JSON
+            client_secret: NBA_YT_CLIENT_SECRET_JSON
+            expected_id: UC-bnuR5UppuY_cnpLTxWyaA
+            expected_title: バスケ魂🔥 日本人NBA速報
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install OAuth verification dependencies
+        run: pip install google-api-python-client google-auth
+
+      - name: Materialize encrypted credentials
+        env:
+          TOKEN_JSON: ${{ secrets[matrix.token_secret] }}
+          CLIENT_SECRET_JSON: ${{ secrets[matrix.client_secret] }}
+        run: |
+          install -d -m 700 "channels/${{ matrix.channel }}/credentials"
+          printf '%s' "$TOKEN_JSON" > "channels/${{ matrix.channel }}/credentials/token.json"
+          printf '%s' "$CLIENT_SECRET_JSON" > "channels/${{ matrix.channel }}/credentials/client_secret.json"
+          chmod 600 "channels/${{ matrix.channel }}/credentials/"*.json
+
+      - name: Verify OAuth channel
+        run: >-
+          python scripts/verify_youtube_channel.py
+          --credentials-dir "channels/${{ matrix.channel }}/credentials"
+          --expected-id "${{ matrix.expected_id }}"
+          --expected-title "${{ matrix.expected_title }}"
