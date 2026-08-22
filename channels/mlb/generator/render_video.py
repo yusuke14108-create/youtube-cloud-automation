@@ -6,7 +6,7 @@ from pathlib import Path
 
 import requests
 from generator.slides import make_section_slide, make_short_slide
-from generator.visual_media import fetch_visual_asset
+from generator.visual_media import fetch_visual_asset, fetch_verified_fallback_photo
 
 _FFMPEG_FULL = "/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg"
 FFMPEG_BIN = os.getenv("FFMPEG_BIN") or (_FFMPEG_FULL if Path(_FFMPEG_FULL).exists() else None) or shutil.which("ffmpeg") or "ffmpeg"
@@ -30,7 +30,13 @@ def _fetch_mlb_photo(query, out_dir, stem, session, result_index):
         if asset:
             asset["query"] = candidate
             return asset
-    return None
+    # Commons search can be rate-limited from shared GitHub runner IPs. Keep a
+    # small, attribution-complete catalog so a transient search failure never
+    # sends MLB back to abstract circle diagrams (or aborts the whole batch).
+    asset = fetch_verified_fallback_photo(out_dir, stem, session, result_index)
+    if asset:
+        asset["query"] = "verified baseball stadium fallback"
+    return asset
 
 LONG_SIZE = (1920, 1080)
 SHORT_SIZE = (1080, 1920)
