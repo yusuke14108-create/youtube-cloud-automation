@@ -95,7 +95,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Short,Noto Sans CJK JP,54,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,-1,0,0,0,94,100,0,0,1,3,0,2,135,135,170,1
+Style: Short,Noto Sans CJK JP,72,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,-1,0,0,0,88,100,0,0,1,3.2,0,2,120,120,300,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
