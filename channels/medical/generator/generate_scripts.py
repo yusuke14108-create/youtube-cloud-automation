@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 
 from generator.llm import run
+from generator.captions import ensure_short_cta
 from generator.performance import load_digest
 from generator.config import LLM_PROVIDER
 from generator.source_fetch import build_source_context
@@ -10,7 +11,6 @@ from generator.source_fetch import build_source_context
 ROOT = Path(__file__).resolve().parent.parent
 SELECTED_DIR = ROOT / "data" / "selected"
 SCRIPTS_DIR = ROOT / "data" / "scripts"
-
 GENERATE_SCHEMA = {
     "type": "object",
     "properties": {
@@ -141,9 +141,7 @@ def main(selected_path=None):
         section.setdefault("image_query", section.get("bullet", "medical research"))
     for short in result["short_scripts"]:
         short.setdefault("image_query", short.get("hook", "medical research"))
-        cta = "詳しい解説は、チャンネルの長尺動画をご覧ください。"
-        if cta not in short["script"]:
-            short["script"] = short["script"].rstrip() + cta
+        short["script"] = ensure_short_cta(short["script"])
 
     SCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
     out_path = SCRIPTS_DIR / f"{path.stem}.json"

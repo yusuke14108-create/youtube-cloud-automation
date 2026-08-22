@@ -2,6 +2,12 @@ name: Medical daily video
 
 on:
   workflow_dispatch:
+    inputs:
+      rerender_latest:
+        description: "Rerender the latest saved script with the current design"
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: "17 18 * * *" # 03:17 JST
 
@@ -64,7 +70,11 @@ jobs:
           for i in $(seq 1 60); do curl -fsS http://127.0.0.1:50021/version && break; sleep 3; done
           curl -fsS http://127.0.0.1:50021/version
       - name: Generate and upload privately
+        if: inputs.rerender_latest != true
         run: python -m generator.run_daily
+      - name: Rerender latest script and upload privately
+        if: inputs.rerender_latest == true
+        run: python -m generator.rerender_latest
       - name: Quality gate
         working-directory: .
         run: python scripts/quality_gate.py channels/medical

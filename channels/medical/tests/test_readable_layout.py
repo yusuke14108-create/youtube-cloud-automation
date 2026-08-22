@@ -1,6 +1,6 @@
 import unittest
 
-from generator.captions import text_to_caption_chunks
+from generator.captions import SHORT_CTA, ensure_short_cta, text_to_caption_chunks
 from generator.slides import _TOKEN_RE, section_panel_box
 
 
@@ -16,6 +16,11 @@ class ReadableLayoutTests(unittest.TestCase):
 
     def test_long_form_image_is_full_bleed(self):
         self.assertEqual((0, 0, 1920, 1080), section_panel_box(1920, 1080))
+
+    def test_short_cta_is_appended_once(self):
+        completed = ensure_short_cta("結論と注意点です。")
+        self.assertTrue(completed.endswith(SHORT_CTA))
+        self.assertEqual(completed, ensure_short_cta(completed))
 
 
 if __name__ == "__main__":

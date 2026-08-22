@@ -1,6 +1,13 @@
 import re
 
 MAX_CHUNK_LEN = 22
+SHORT_CTA = "詳しい解説は、チャンネルの長尺動画をご覧ください。"
+
+
+def ensure_short_cta(script: str) -> str:
+    return script if SHORT_CTA in script else script.rstrip() + SHORT_CTA
+
+
 BREAK_CHARS = set("はがをにへでともやのねよかしば、。！？")
 NO_CHUNK_START = set("、。！？：；）】」』〉》〕ぁぃぅぇぉゃゅょっァィゥェォャュョッー")
 NO_CHUNK_END = set("、：；（【「『〈《〔")
