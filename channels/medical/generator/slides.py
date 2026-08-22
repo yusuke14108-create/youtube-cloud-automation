@@ -33,7 +33,10 @@ SOURCE_LABELS = {
 }
 
 
-_TOKEN_RE = re.compile(r"[A-Za-z0-9]+(?:[._/+:-][A-Za-z0-9]+)*|.")
+_TOKEN_RE = re.compile(
+    r"[A-Za-z0-9]+(?:[._/+:-][A-Za-z0-9]+)*|"
+    r"[ァ-ヶー・]+|[一-龯々]+[ぁ-ん]{0,4}|[ぁ-ん]+|."
+)
 _BREAK_AFTER = set(" 、。！？：；）】」』〉》〕はがをにへでともやのねよかしばなら")
 _NO_LINE_START = set("、。！？：；）】」』〉》〕ぁぃぅぇぉゃゅょっァィゥェォャュョッー")
 
@@ -106,13 +109,8 @@ CARD_ALPHA = 242
 
 
 def section_panel_box(width: int, height: int) -> tuple:
-    """Geometry of the right-hand visual panel, shared with render_video.py so
-    the motion clip composited underneath lines up with this foreground layer."""
-    list_top = height * 0.30
-    list_bottom = height * 0.70
-    panel_x = width * 0.59
-    panel_w = width * 0.92 - panel_x
-    return panel_x, list_top, panel_w, list_bottom - list_top
+    """The new long-form format uses imagery across the whole frame."""
+    return 0, 0, width, height
 
 
 def make_background(width: int, height: int, out_path: Path) -> None:
@@ -268,13 +266,20 @@ def make_short_slide(width: int, height: int, source: str, hook: str, out_path: 
     draw = ImageDraw.Draw(img)
 
     margin = int(width * 0.09)
-    badge_font = ImageFont.truetype(FONT_BOLD, size=38)
-    badge_h = _draw_badge(draw, margin, 82, SOURCE_LABELS.get(source, source), badge_font)
+    logo_x, logo_y, logo_d = margin, 72, 74
+    draw.rounded_rectangle([logo_x, logo_y, logo_x + logo_d, logo_y + logo_d], radius=20, fill=ACCENT_COLOR)
+    cross_w = 13
+    cx, cy = logo_x + logo_d / 2, logo_y + logo_d / 2
+    draw.rounded_rectangle([cx - cross_w / 2, logo_y + 14, cx + cross_w / 2, logo_y + logo_d - 14], radius=5, fill="white")
+    draw.rounded_rectangle([logo_x + 14, cy - cross_w / 2, logo_x + logo_d - 14, cy + cross_w / 2], radius=5, fill="white")
+    channel_font = ImageFont.truetype(FONT_BOLD, size=39)
+    draw.text((logo_x + logo_d + 18, logo_y + 11), "医療と医学の", font=channel_font, fill=(255, 255, 255, 255), stroke_width=3, stroke_fill=(18, 26, 32, 210))
+    draw.text((logo_x + logo_d + 18, logo_y + 53), "最新ニュース", font=channel_font, fill=(255, 255, 255, 255), stroke_width=3, stroke_fill=(18, 26, 32, 210))
 
     # Keep the hook below the badge and above the subtitle zone. Its font shrinks
     # until the whole block fits, so Japanese line breaks never collide with UI.
-    hook_top = 250
-    hook_bottom = 820
+    hook_top = 245
+    hook_bottom = 790
     max_w = width - margin * 2
     chosen_font = None
     chosen_lines = None
@@ -305,24 +310,6 @@ def make_short_slide(width: int, height: int, source: str, hook: str, out_path: 
         draw.text(((width - tw) / 2, y), line, font=chosen_font, fill=(255, 255, 255, 255))
         y += line_h
 
-    divider_y = 875
-    draw.rounded_rectangle([margin, divider_y, width - margin, divider_y + 5], radius=2, fill=ACCENT_COLOR)
-    channel_font = ImageFont.truetype(FONT_BOLD, size=32)
-    channel_text = "医療と医学の最新ニュース"
-    channel_w = draw.textlength(channel_text, font=channel_font)
-    draw.text(
-        ((width - channel_w) / 2, divider_y + 35), channel_text, font=channel_font,
-        fill=(255, 255, 255, 255), stroke_width=3, stroke_fill=(18, 26, 32, 200),
-    )
-
-    guide_font = ImageFont.truetype(FONT_REGULAR, size=27)
-    guide_text = "要点を30〜60秒で解説"
-    guide_w = draw.textlength(guide_text, font=guide_font)
-    draw.text(
-        ((width - guide_w) / 2, divider_y + 90), guide_text, font=guide_font,
-        fill=(235, 240, 244, 255), stroke_width=3, stroke_fill=(18, 26, 32, 200),
-    )
-
     out_path.parent.mkdir(parents=True, exist_ok=True)
     img.save(out_path)
 
@@ -337,103 +324,34 @@ def make_section_slide(
     out_path: Path,
     visual: dict = None,
 ) -> None:
-    """Foreground layer only (transparent canvas): the right-hand panel area is
-    left clear so render_video.py can composite a moving clip underneath it."""
+    """Full-bleed editorial format with one readable topic over changing imagery."""
     img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    margin = int(width * 0.08)
-    marker_d = int(height * 0.045)
-    text_x = margin + marker_d + int(width * 0.018)
+    margin = int(width * 0.055)
+    draw.rectangle([0, 0, width, int(height * 0.29)], fill=(8, 20, 29, 205))
+    draw.rectangle([0, int(height * 0.76), width, height], fill=(8, 20, 29, 185))
 
-    has_visual = bool(visual) and visual.get("kind", "none") != "none"
-    list_right = width * 0.54
-    max_w = list_right - text_x
+    badge_font = ImageFont.truetype(FONT_BOLD, size=34)
+    _draw_badge(draw, margin, 42, SOURCE_LABELS.get(source, source), badge_font)
+    progress_font = ImageFont.truetype(FONT_BOLD, size=32)
+    progress = f"{current_index + 1} / {len(bullets)}"
+    pw = draw.textlength(progress, font=progress_font)
+    draw.text((width - margin - pw, 55), progress, font=progress_font, fill=(230, 241, 247, 255))
 
-    badge_font = ImageFont.truetype(FONT_BOLD, size=int(height * 0.028))
-    header_font = ImageFont.truetype(FONT_REGULAR, size=int(height * 0.024))
-    marker_font = ImageFont.truetype(FONT_BOLD, size=int(height * 0.024))
-    item_font_active = ImageFont.truetype(FONT_BOLD, size=int(height * 0.030))
-    item_font_inactive = ImageFont.truetype(FONT_REGULAR, size=int(height * 0.026))
+    topic = bullets[current_index]
+    topic_font = ImageFont.truetype(FONT_BOLD, size=76)
+    topic_lines = _wrap_text(draw, topic, topic_font, width - margin * 2)
+    if len(topic_lines) > 2:
+        topic_font = ImageFont.truetype(FONT_BOLD, size=64)
+        topic_lines = _wrap_text(draw, topic, topic_font, width - margin * 2)[:2]
+    y = 145
+    for line in topic_lines:
+        draw.text((margin, y), line, font=topic_font, fill=(255, 255, 255, 255))
+        y += topic_font.size * 1.18
 
-    badge_h = _draw_badge(draw, margin, margin, SOURCE_LABELS.get(source, source), badge_font)
-
-    header_lines = _wrap_text(draw, title, header_font, width - margin * 2)[:1]
-    hy = margin + badge_h + 14
-    for line in header_lines:
-        draw.text((margin, hy), line, font=header_font, fill=SUMMARY_COLOR)
-        hy += header_font.size * 1.3
-
-    list_top = height * 0.30
-    list_bottom = height * 0.70
-    n = len(bullets)
-    row_h = (list_bottom - list_top) / n
-
-    for i, text in enumerate(bullets):
-        row_y = list_top + i * row_h
-        cy = row_y + row_h / 2
-        cx = margin + marker_d / 2
-
-        if i < current_index:
-            marker_fill = ACCENT_LIGHT
-            marker_outline = None
-            text_color = (132, 147, 157)
-            font = item_font_inactive
-            marker_label = None
-            label_color = ACCENT_COLOR
-        elif i == current_index:
-            draw.rounded_rectangle(
-                [margin - 14, row_y + row_h * 0.06, list_right + 14, row_y + row_h * 0.94],
-                radius=row_h * 0.32,
-                fill=(255, 255, 255),
-            )
-            marker_fill = ACCENT_COLOR
-            marker_outline = None
-            text_color = TITLE_COLOR
-            font = item_font_active
-            marker_label = str(i + 1)
-            label_color = (255, 255, 255)
-        else:
-            marker_fill = None
-            marker_outline = ACCENT_LIGHT
-            text_color = (185, 196, 201)
-            font = item_font_inactive
-            marker_label = str(i + 1)
-            label_color = (176, 187, 179)
-
-        if marker_fill:
-            draw.ellipse([cx - marker_d / 2, cy - marker_d / 2, cx + marker_d / 2, cy + marker_d / 2], fill=marker_fill)
-        else:
-            draw.ellipse(
-                [cx - marker_d / 2, cy - marker_d / 2, cx + marker_d / 2, cy + marker_d / 2],
-                outline=marker_outline,
-                width=3,
-            )
-
-        if marker_label is None:
-            # draw a checkmark with line segments instead of a "✓" glyph — Hiragino has no glyph for
-            # it and silently falls back to a tofu box.
-            draw.line(
-                [(cx - marker_d * 0.22, cy), (cx - marker_d * 0.05, cy + marker_d * 0.2)],
-                fill=label_color,
-                width=3,
-            )
-            draw.line(
-                [(cx - marker_d * 0.05, cy + marker_d * 0.2), (cx + marker_d * 0.25, cy - marker_d * 0.22)],
-                fill=label_color,
-                width=3,
-            )
-        else:
-            lw = draw.textlength(marker_label, font=marker_font)
-            draw.text((cx - lw / 2, cy - marker_font.size / 2 - 2), marker_label, font=marker_font, fill=label_color)
-
-        fitted = _fit_font(text, FONT_BOLD if i == current_index else FONT_REGULAR, font.size, 22, max_w)
-        display_text = _ellipsize(draw, text, fitted, max_w)
-        draw.text((text_x, cy - fitted.size / 2 - 2), display_text, font=fitted, fill=text_color)
-
-    if has_visual:
-        panel_x, panel_y, panel_w, panel_h = section_panel_box(width, height)
-        _draw_visual_panel(draw, panel_x, panel_y, panel_w, panel_h, visual)
+    channel_font = ImageFont.truetype(FONT_BOLD, size=34)
+    draw.text((margin, height - 105), "医療と医学の最新ニュース", font=channel_font, fill=(225, 239, 247, 255))
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     img.save(out_path)

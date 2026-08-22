@@ -10,7 +10,7 @@ SENTENCE_SPLIT_RE = re.compile(r"(?<=[。！？])")
 CLAUSE_SPLIT_RE = re.compile(r"(?<=[、])")
 PROTECTED_TERM_RE = re.compile(
     r"[ァ-ヶー・]+(?:[0-9０-９]+)?(?:mg|mL|錠|カプセル|契約)?|"
-    r"[一-龯々]{2,}|"
+    r"[一-龯々]+(?:[ぁ-ん]{1,4})?|"
     r"[A-Za-z]+(?:[ -][A-Za-z0-9]+)*|"
     r"[0-9０-９]+(?:\.[0-9０-９]+)?(?:mg|mL|％|%|例|人|倍)"
 )

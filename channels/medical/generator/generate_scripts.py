@@ -85,7 +85,7 @@ GENERATE_PROMPT_TEMPLATE = """次の複数の医療系トピックについて�
   3. まとめセクション1つ（item_id="summary", source="medical", 全体の総括、visual.kind="none"）
   各セクションにimage_queryを必ず含めること。Wikimedia Commonsのライセンス確認済み写真を複数表示するための短い英語キーワード（2〜4語）。話題の対象が一目で分かる具体的な剤形、医療機器、臓器模型、顕微鏡像を優先する。患者を特定できる写真や製品広告は避ける。
   各narrationは320〜500字を目安にする。一文40字程度までを目安に短く区切ること。visualフィールドは全セクションに必ず含めること（省略禁止、不要ならkindに"none"を明示）。
-- short_scripts: 合計{short_count}本のショート台本（それぞれ150〜300字、一文を短く区切ること）。まず全トピックを最低1本ずつ扱う。トピックが3件未満の場合は、重要度が高い話題を「臨床上の注意」「薬理・病態の学習ポイント」など異なる角度で展開し、重複した台本にしない。item_idは対応する項目のid、sourceはその項目のsource値。hookは短いフック文、scriptはその話題を30〜60秒で解説し、結論、根拠、注意点まで各Shorts内で完結させる。長尺を見ないと理解できない予告編にしない。長尺への誘導は必須ではなく、入れる場合は結論後の一言だけにする。各ショートにもimage_query（Wikimedia Commonsで具体的な薬剤の剤形、医療機器、解剖、顕微鏡像などを探す英語キーワード）を必ず含めること。
+- short_scripts: 合計{short_count}本のショート台本（それぞれ150〜300字、一文を短く区切ること）。まず全トピックを最低1本ずつ扱う。トピックが3件未満の場合は、重要度が高い話題を「臨床上の注意」「薬理・病態の学習ポイント」など異なる角度で展開し、重複した台本にしない。item_idは対応する項目のid、sourceはその項目のsource値。hookは短いフック文、scriptはその話題を30〜60秒で解説し、結論、根拠、注意点まで各Shorts内で完結させる。長尺を見ないと理解できない予告編にしない。内容を完結させた後、最後の一文を「詳しい解説は、チャンネルの長尺動画をご覧ください。」という誘導にする。各ショートにもimage_query（Wikimedia Commonsで具体的な薬剤の剤形、医療機器、解剖、顕微鏡像などを探す英語キーワード）を必ず含めること。
 
 医療情報は不正確な要約が実害につながりやすいため、原文に無い数値・用量・適応・因果関係は絶対に創作しないこと。個別患者への診断・治療指示はしないこと。「速報時点の情報であり、診療判断は添付文書・公式通知・所属施設の手順を確認してください」という趣旨をまとめに含めること。
 
@@ -141,6 +141,9 @@ def main(selected_path=None):
         section.setdefault("image_query", section.get("bullet", "medical research"))
     for short in result["short_scripts"]:
         short.setdefault("image_query", short.get("hook", "medical research"))
+        cta = "詳しい解説は、チャンネルの長尺動画をご覧ください。"
+        if cta not in short["script"]:
+            short["script"] = short["script"].rstrip() + cta
 
     SCRIPTS_DIR.mkdir(parents=True, exist_ok=True)
     out_path = SCRIPTS_DIR / f"{path.stem}.json"
