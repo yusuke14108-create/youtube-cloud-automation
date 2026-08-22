@@ -76,6 +76,10 @@ jobs:
         if: inputs.report_links_only != true
         working-directory: .
         run: python scripts/verify_youtube_channel.py --credentials-dir channels/mlb/credentials --expected-id UCwl8YMNbXi-zhaD4zeSwB5g --expected-title "メジャー魂🔥 日本人MLB速報"
+      - name: Refresh audience performance guidance
+        if: inputs.report_links_only != true
+        continue-on-error: true
+        run: python -m generator.performance
       - name: Start VOICEVOX
         if: inputs.report_links_only != true
         run: |

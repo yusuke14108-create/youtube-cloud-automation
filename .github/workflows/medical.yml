@@ -64,6 +64,9 @@ jobs:
       - name: Verify upload destination
         working-directory: .
         run: python scripts/verify_youtube_channel.py --credentials-dir channels/medical/credentials --expected-id UCG7vSxIAPl-Zuv5y0uWJYwg --expected-title "医療と医学の最新ニュース"
+      - name: Refresh audience performance guidance
+        continue-on-error: true
+        run: python -m generator.performance
       - name: Start VOICEVOX
         run: |
           docker run -d --name voicevox -p 127.0.0.1:50021:50021 voicevox/voicevox_engine:cpu-latest

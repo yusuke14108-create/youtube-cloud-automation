@@ -15,6 +15,19 @@ HISTORY_PATH = ANALYTICS_DIR / "history.json"
 
 MIN_VIDEOS_FOR_DIGEST = 5
 NO_DATA_DIGEST = "過去動画のデータがまだ少ないため、傾向分析はまだ行えません。構成やテーマは多様に試してください。"
+RETENTION_GUIDANCE = """\
+視聴者維持率を基準にした制作・公開後改善ルール:
+- 冒頭3秒で結論または最大の驚きを提示し、挨拶・ロゴだけの導入・同じ説明の言い換えを置かない。
+- 各区間は新しい事実、画像、比較のいずれかを必ず追加し、内容が進まない区間を作らない。
+- 公開48〜72時間後に維持率曲線を確認し、冒頭の急落と局所的な急落を修正候補として記録する。
+- 急落区間は原因を確認してからYouTubeエディタで削除候補にする。自動削除や、医療上の注意・条件が欠ける切り方はしない。
+- 好調動画の題材だけでなく、離脱が少ない導入長・説明順・画面変化の間隔を次回台本へ反映する。"""
+
+
+def _with_retention_guidance(text: str) -> str:
+    if RETENTION_GUIDANCE in text:
+        return text
+    return f"{text}\n\n{RETENTION_GUIDANCE}"
 
 
 def _analytics_client():
@@ -115,8 +128,9 @@ def build_digest() -> str:
     longs = [r for r in records if r["kind"] == "long" and r["stats"]]
 
     if len(longs) < MIN_VIDEOS_FOR_DIGEST:
-        DIGEST_PATH.write_text(NO_DATA_DIGEST, encoding="utf-8")
-        return NO_DATA_DIGEST
+        digest = _with_retention_guidance(NO_DATA_DIGEST)
+        DIGEST_PATH.write_text(digest, encoding="utf-8")
+        return digest
 
     longs.sort(key=lambda r: r["stats"]["avg_view_pct"], reverse=True)
     top = longs[:3]
@@ -135,15 +149,15 @@ def build_digest() -> str:
         )
     lines.append("この傾向を参考にしつつ、同じテーマ・構成を毎回繰り返さないこと。")
 
-    digest = "\n".join(lines)
+    digest = _with_retention_guidance("\n".join(lines))
     DIGEST_PATH.write_text(digest, encoding="utf-8")
     return digest
 
 
 def load_digest() -> str:
     if DIGEST_PATH.exists():
-        return DIGEST_PATH.read_text(encoding="utf-8")
-    return NO_DATA_DIGEST
+        return _with_retention_guidance(DIGEST_PATH.read_text(encoding="utf-8"))
+    return _with_retention_guidance(NO_DATA_DIGEST)
 
 
 def main():
