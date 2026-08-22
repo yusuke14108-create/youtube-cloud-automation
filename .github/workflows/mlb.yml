@@ -8,6 +8,11 @@ on:
         required: false
         type: boolean
         default: false
+      report_links_only:
+        description: "Report links from the latest saved upload without generating"
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: "17 18 * * *" # 03:17 JST; finish private upload before 05:00
 
@@ -43,6 +48,7 @@ jobs:
           cache: pip
           cache-dependency-path: channels/mlb/requirements.txt
       - name: Install dependencies
+        if: inputs.report_links_only != true
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg fonts-noto-cjk curl
@@ -55,28 +61,38 @@ jobs:
           key: mlb-state-${{ github.run_id }}
           restore-keys: mlb-state-
       - name: Create runtime credentials
+        if: inputs.report_links_only != true
         working-directory: .
         env:
           YT_CLIENT_SECRET_JSON: ${{ secrets.MLB_YT_CLIENT_SECRET_JSON }}
           YT_TOKEN_JSON: ${{ secrets.MLB_YT_TOKEN_JSON }}
         run: python scripts/write_credentials.py channels/mlb/credentials
       - name: Verify upload destination
+        if: inputs.report_links_only != true
         working-directory: .
         run: python scripts/verify_youtube_channel.py --credentials-dir channels/mlb/credentials --expected-id UCwl8YMNbXi-zhaD4zeSwB5g --expected-title "メジャー魂🔥 日本人MLB速報"
       - name: Start VOICEVOX
+        if: inputs.report_links_only != true
         run: |
           docker run -d --name voicevox -p 127.0.0.1:50021:50021 voicevox/voicevox_engine:cpu-latest
           for i in $(seq 1 60); do curl -fsS http://127.0.0.1:50021/version && break; sleep 3; done
           curl -fsS http://127.0.0.1:50021/version
       - name: Generate one fresh test Short privately
-        if: inputs.short_test == true
+        if: inputs.report_links_only != true && inputs.short_test == true
         env:
           YOUTUBE_SCHEDULE_PUBLIC_HOUR: ""
         run: python -m generator.short_test
       - name: Generate and upload privately
-        if: inputs.short_test != true
+        if: inputs.report_links_only != true && inputs.short_test != true
         run: python -m generator.scheduled_generate
+      - name: Report latest saved video links
+        if: inputs.report_links_only == true
+        run: |
+          latest=$(find data/uploads -type f -name '*.json' ! -name '*.partial.json' | sort | tail -1)
+          test -n "$latest"
+          python -c 'import json,sys; d=json.load(open(sys.argv[1])); print("longs=" + " ".join("https://youtu.be/" + x for x in d.get("longs", []))); print("shorts=" + " ".join("https://youtu.be/" + x for x in d.get("shorts", [])))' "$latest"
       - name: Quality gate
+        if: inputs.report_links_only != true
         working-directory: .
         run: python scripts/quality_gate.py channels/mlb
       - name: Keep JSON state only

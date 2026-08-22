@@ -137,6 +137,8 @@ def main(script_path=None):
     result = {"longs": long_ids, "shorts": short_ids}
     (UPLOADS_DIR / f"{run_id}.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     partial_path.unlink(missing_ok=True)
+    print("[info] uploaded long videos: " + " ".join(f"https://youtu.be/{video_id}" for video_id in long_ids))
+    print("[info] uploaded Shorts: " + " ".join(f"https://youtu.be/{video_id}" for video_id in short_ids))
     return result
 
 
