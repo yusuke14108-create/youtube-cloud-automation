@@ -1,4 +1,5 @@
 import re
+import shutil
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -15,16 +16,19 @@ USER_AGENT = "ScienceWonderYouTube/1.0 (visual asset retrieval; contact via YouT
 # used only when live search/download is unavailable from a cloud runner.
 VERIFIED_BASEBALL_FALLBACKS = (
     {
+        "filename": "fukushima_azuma.jpg",
         "url": "https://upload.wikimedia.org/wikipedia/commons/4/43/Fukushima_Azuma_Baseball_Stadium_180408.jpg",
         "source_page": "https://commons.wikimedia.org/wiki/File:Fukushima_Azuma_Baseball_Stadium_180408.jpg",
         "credit": "Yauchi / CC BY-SA 4.0",
     },
     {
+        "filename": "hiroshima_stadium.jpg",
         "url": "https://upload.wikimedia.org/wikipedia/commons/a/a7/Hiroshima_Municipal_Baseball_Stadium_2009.JPG",
         "source_page": "https://commons.wikimedia.org/wiki/File:Hiroshima_Municipal_Baseball_Stadium_2009.JPG",
         "credit": "Taisyo / CC BY-SA 3.0",
     },
     {
+        "filename": "naraden_stadium.jpg",
         "url": "https://upload.wikimedia.org/wikipedia/commons/7/7c/Naraden_Stadium_%EF%BC%88K%C5%8Dnoike_Baseball_Stadium%EF%BC%89.jpg",
         "source_page": "https://commons.wikimedia.org/wiki/File:Naraden_Stadium_%EF%BC%88K%C5%8Dnoike_Baseball_Stadium%EF%BC%89.jpg",
         "credit": "Degueulasse / CC BY 3.0",
@@ -165,16 +169,15 @@ def fetch_visual_asset(query: str, out_dir: Path, stem: str, session=None, resul
 
 
 def fetch_verified_fallback_photo(out_dir: Path, stem: str, session=None, result_index: int = 0):
-    """Download a known licensed baseball photo without relying on search."""
-    session = session or requests.Session()
-    session.headers["User-Agent"] = USER_AGENT
+    """Copy a bundled, known licensed baseball photo without network access."""
     out_dir.mkdir(parents=True, exist_ok=True)
     item = VERIFIED_BASEBALL_FALLBACKS[result_index % len(VERIFIED_BASEBALL_FALLBACKS)]
-    suffix = Path(urlparse(item["url"]).path).suffix.lower()
+    bundled_path = ROOT / "assets" / "licensed_fallbacks" / item["filename"]
+    suffix = bundled_path.suffix.lower()
     path = out_dir / f"{stem}{suffix}"
     try:
-        _download(item, path, session)
-    except requests.RequestException:
+        shutil.copy2(bundled_path, path)
+    except OSError:
         return None
     return {
         "kind": "photo",
