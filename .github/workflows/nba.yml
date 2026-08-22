@@ -43,8 +43,8 @@ jobs:
       PIPELINE_RUN_SUFFIX: ${{ inputs.force_fresh_test && format('_test_{0}', github.run_id) || '' }}
       RERENDER_SUFFIX: ${{ format('rerender_{0}', github.run_id) }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
