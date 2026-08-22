@@ -82,6 +82,11 @@ def synthesize_text(session: requests.Session, text: str, out_wav_path: Path, ou
 
     captions = chunks_to_captions(chunks, durations)
     write_srt(captions, out_srt_path)
+    sync_path = out_srt_path.with_suffix(".sync.json")
+    sync_path.write_text(json.dumps([
+        {"display": chunk, "speech": for_speech(chunk), "duration": duration}
+        for chunk, duration in zip(chunks, durations)
+    ], ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def synthesize_sections(

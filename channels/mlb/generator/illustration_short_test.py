@@ -31,6 +31,7 @@ def main():
             "image_query": "Shohei Ohtani baseball",
             "illustration_path": "assets/illustrations/ohtani-two-way-20260823.png",
             "asset_kind": "illustration",
+            "motion_style": "editorial_push",
             "source_ids": ["660271"],
             "visual": {"kind": "scorecard", "caption": "6年連続", "labels": ["30本", "448ft"]},
         }],

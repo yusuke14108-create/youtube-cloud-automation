@@ -309,15 +309,37 @@ def make_short_slide(width: int, height: int, source: str, hook: str, out_path: 
     if not has_media:
         _draw_decorative_circles(draw, width, height)
 
-    margin = int(width * 0.09)
-    badge_font = _font(FONT_BOLD, 38)
-    badge_h = _draw_badge(draw, margin, 82, SOURCE_LABELS.get(source, source), badge_font)
+    margin = int(width * 0.07)
+    badge_font = _font(FONT_BOLD, 30)
+    _draw_badge(draw, margin, 70, SOURCE_LABELS.get(source, source), badge_font)
+
+    # Compact edge branding: keep the player's face and the hook clear.  The old
+    # full channel name was centred over the hero image and competed with it.
+    brand_y = 70
+    brand_h = 58
+    brand_text = "MLB FLASH"
+    brand_font = _font(FONT_BOLD, 25)
+    brand_w = int(draw.textlength(brand_text, font=brand_font)) + 86
+    brand_x = width - margin - brand_w
+    draw.rounded_rectangle(
+        [brand_x, brand_y, brand_x + brand_w, brand_y + brand_h],
+        radius=brand_h // 2, fill=(8, 18, 30, 215), outline=(255, 207, 64), width=2,
+    )
+    logo_r = 20
+    logo_x = brand_x + 30
+    logo_y = brand_y + brand_h // 2
+    draw.ellipse([logo_x - logo_r, logo_y - logo_r, logo_x + logo_r, logo_y + logo_r], fill=(210, 38, 48))
+    draw.text((logo_x - 9, logo_y - 17), "M", font=_font(FONT_BOLD, 24), fill=(255, 255, 255))
+    draw.text((brand_x + 62, brand_y + 14), brand_text, font=brand_font, fill=(255, 255, 255))
 
     # Keep the hook below the badge and above the subtitle zone. Its font shrinks
     # until the whole block fits, so Japanese line breaks never collide with UI.
     hook_top = 1040 if background_kind == "illustration" else 210
     hook_bottom = 1300 if background_kind == "illustration" else 600
-    max_w = width - margin * 2
+    # An asymmetric lower-third feels more editorial and avoids the old
+    # everything-in-the-middle composition.
+    card_right = int(width * 0.80)
+    max_w = card_right - margin - 54
     chosen_font = None
     chosen_lines = None
     for size in range(76, 47, -2):
@@ -339,20 +361,19 @@ def make_short_slide(width: int, height: int, source: str, hook: str, out_path: 
     pop_color = CONFETTI_COLORS[1]
     shadow_off = 10
     draw.rounded_rectangle(
-        [margin - 16 + shadow_off, card_top + shadow_off, width - margin + 16 + shadow_off, card_bottom + shadow_off],
+        [margin - 8 + shadow_off, card_top + shadow_off, card_right + shadow_off, card_bottom + shadow_off],
         radius=36, fill=ACCENT_LIGHT,
     )
     draw.rounded_rectangle(
-        [margin - 16, card_top, width - margin + 16, card_bottom],
+        [margin - 8, card_top, card_right, card_bottom],
         radius=36, fill=(255, 255, 255), outline=pop_color, width=6,
     )
     _draw_star(draw, margin + 6, card_top + 10, 22, CONFETTI_COLORS[0])
-    _draw_star(draw, width - margin - 6, card_bottom - 10, 22, CONFETTI_COLORS[3])
+    _draw_star(draw, card_right - 18, card_bottom - 10, 22, CONFETTI_COLORS[3])
 
     y = hook_top + (hook_bottom - hook_top - block_h) / 2
     for line in chosen_lines:
-        tw = draw.textlength(line, font=chosen_font)
-        draw.text(((width - tw) / 2, y), line, font=chosen_font, fill=TITLE_COLOR)
+        draw.text((margin + 24, y), line, font=chosen_font, fill=TITLE_COLOR)
         y += line_h
 
     # A licensed photo is the primary explanation. Do not cover it with the old
@@ -363,12 +384,6 @@ def make_short_slide(width: int, height: int, source: str, hook: str, out_path: 
     divider_y = 1260
     if background_kind != "illustration":
         draw.rounded_rectangle([margin, divider_y, width - margin, divider_y + 5], radius=2, fill=ACCENT_COLOR)
-    channel_font = _font(FONT_BOLD, 32)
-    channel_text = "メジャー魂｜MLB速報"
-    channel_w = draw.textlength(channel_text, font=channel_font)
-    channel_y = 150 if background_kind == "illustration" else divider_y + 35
-    draw.text(((width - channel_w) / 2, channel_y), channel_text, font=channel_font, fill=(255, 255, 255) if background_kind == "illustration" else SUMMARY_COLOR, stroke_width=3 if background_kind == "illustration" else 0, stroke_fill=(8, 18, 30))
-
     guide_font = _font(FONT_REGULAR, 27)
     guide_text = "日本人メジャーリーガーを60秒で！"
     guide_w = draw.textlength(guide_text, font=guide_font)

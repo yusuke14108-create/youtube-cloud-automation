@@ -112,6 +112,27 @@ def render_deck(image_paths: list, durations: list, wav_path: Path, srt_path: Pa
     subprocess.run(cmd, capture_output=True, text=True, check=True)
 
 
+def render_short_motion(slide_path: Path, duration: float, wav_path: Path, srt_path: Path, out_path: Path) -> None:
+    """Animate a portrait hero frame while keeping subtitles in the safe zone."""
+    subtitles_arg = f"subtitles={_escape_for_filter(srt_path)}:force_style='{SHORT_SUBTITLE_STYLE}'"
+    frames = max(1, round(duration * 25))
+    # Slow push-in plus a slight horizontal drift.  Scale first so zoompan can
+    # crop without exposing an edge; subtitles are applied after the movement.
+    filters = (
+        "scale=1296:2304,"
+        f"zoompan=z='min(zoom+0.0007,1.11)':x='iw/2-(iw/zoom/2)+sin(on/38)*10':"
+        f"y='ih/2-(ih/zoom/2)-on/18':d={frames}:s=1080x1920:fps=25,"
+        + subtitles_arg
+    )
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        FFMPEG_BIN, "-y", "-loop", "1", "-i", str(slide_path), "-i", str(wav_path),
+        "-vf", filters, "-frames:v", str(frames), "-c:v", "libx264", "-preset", "medium",
+        "-c:a", "aac", "-b:a", "192k", "-pix_fmt", "yuv420p", "-shortest", str(out_path),
+    ]
+    subprocess.run(cmd, capture_output=True, text=True, check=True)
+
+
 def main(script_path=None):
     if script_path is None:
         script_files = sorted(SCRIPTS_DIR.glob("*.json"))
@@ -208,11 +229,17 @@ def main(script_path=None):
         import wave
         with wave.open(str(audio_dir / f"short_{i}.wav"), "rb") as wav:
             short_duration = wav.getnframes() / wav.getframerate()
-        render_deck(
-            slide_paths, [short_duration / len(slide_paths)] * len(slide_paths),
-            audio_dir / f"short_{i}.wav", audio_dir / f"short_{i}.srt",
-            video_dir / f"short_{i}.mp4", SHORT_SUBTITLE_STYLE,
-        )
+        if short.get("motion_style") == "editorial_push" and len(slide_paths) == 1:
+            render_short_motion(
+                slide_paths[0], short_duration, audio_dir / f"short_{i}.wav",
+                audio_dir / f"short_{i}.srt", video_dir / f"short_{i}.mp4",
+            )
+        else:
+            render_deck(
+                slide_paths, [short_duration / len(slide_paths)] * len(slide_paths),
+                audio_dir / f"short_{i}.wav", audio_dir / f"short_{i}.srt",
+                video_dir / f"short_{i}.mp4", SHORT_SUBTITLE_STYLE,
+            )
         print(f"[info] wrote {video_dir / f'short_{i}.mp4'}")
 
     asset_dir.mkdir(parents=True, exist_ok=True)
