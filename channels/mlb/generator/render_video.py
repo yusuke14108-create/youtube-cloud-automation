@@ -49,9 +49,9 @@ LONG_SUBTITLE_STYLE = (
 )
 
 SHORT_SUBTITLE_STYLE = (
-    f"FontName={SUBTITLE_FONT},FontSize=20,Bold=1,PrimaryColour=&H00FFFFFF,"
-    "OutlineColour=&H00101010,BorderStyle=1,Outline=1.0,Shadow=0,"
-    "Alignment=2,MarginL=96,MarginR=96,MarginV=130,Spacing=0.1,WrapStyle=2"
+    f"FontName={SUBTITLE_FONT},FontSize=16,Bold=1,PrimaryColour=&H00FFFFFF,"
+    "OutlineColour=&H00101010,BorderStyle=1,Outline=0.8,Shadow=0,"
+    "Alignment=2,MarginL=170,MarginR=170,MarginV=155,Spacing=0,WrapStyle=2,ScaleX=94"
 )
 
 

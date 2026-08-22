@@ -368,8 +368,13 @@ def make_short_slide(width: int, height: int, source: str, hook: str, out_path: 
         chosen_font = _font(FONT_BOLD, 46)
         chosen_lines = _wrap_text(draw, hook, chosen_font, max_w)[:4]
 
-    line_h = chosen_font.size * 1.22
-    block_h = len(chosen_lines) * line_h
+    # PIL's nominal font size includes invisible ascender/descender space.  Use
+    # the real glyph boxes so the visible title is centred vertically as well
+    # as horizontally inside its card.
+    glyph_boxes = [draw.textbbox((0, 0), line, font=chosen_font) for line in chosen_lines]
+    glyph_heights = [box[3] - box[1] for box in glyph_boxes]
+    line_gap = max(12, chosen_font.size // 5)
+    block_h = sum(glyph_heights) + line_gap * (len(chosen_lines) - 1)
     card_pad = 26
     card_top = hook_top + (hook_bottom - hook_top - block_h) / 2 - card_pad
     card_bottom = card_top + block_h + card_pad * 2
@@ -386,12 +391,12 @@ def make_short_slide(width: int, height: int, source: str, hook: str, out_path: 
     _draw_star(draw, margin + 6, card_top + 10, 22, CONFETTI_COLORS[0])
     _draw_star(draw, card_right - 18, card_bottom - 10, 22, CONFETTI_COLORS[3])
 
-    y = hook_top + (hook_bottom - hook_top - block_h) / 2
-    for line in chosen_lines:
-        tw = draw.textlength(line, font=chosen_font)
+    y = (card_top + card_bottom - block_h) / 2
+    for line, box, glyph_h in zip(chosen_lines, glyph_boxes, glyph_heights):
+        tw = box[2] - box[0]
         text_x = (margin - 8 + card_right - tw) / 2
-        draw.text((text_x, y), line, font=chosen_font, fill=TITLE_COLOR)
-        y += line_h
+        draw.text((text_x - box[0], y - box[1]), line, font=chosen_font, fill=TITLE_COLOR)
+        y += glyph_h + line_gap
 
     # A licensed photo is the primary explanation. Do not cover it with the old
     # connected-circle diagram; diagrams are only a last-resort fallback.
