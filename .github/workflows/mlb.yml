@@ -13,6 +13,11 @@ on:
         required: false
         type: boolean
         default: false
+      illustration_test:
+        description: "Generate one MLB Short with an original player illustration"
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: "17 18 * * *" # 03:17 JST; finish private upload before 05:00
 
@@ -78,13 +83,18 @@ jobs:
           for i in $(seq 1 60); do curl -fsS http://127.0.0.1:50021/version && break; sleep 3; done
           curl -fsS http://127.0.0.1:50021/version
       - name: Generate one fresh test Short privately
-        if: inputs.report_links_only != true && inputs.short_test == true
+        if: inputs.report_links_only != true && inputs.illustration_test != true && inputs.short_test == true
         env:
           YOUTUBE_SCHEDULE_PUBLIC_HOUR: ""
         run: python -m generator.short_test
       - name: Generate and upload privately
-        if: inputs.report_links_only != true && inputs.short_test != true
+        if: inputs.report_links_only != true && inputs.illustration_test != true && inputs.short_test != true
         run: python -m generator.scheduled_generate
+      - name: Generate illustration test Short privately
+        if: inputs.report_links_only != true && inputs.illustration_test == true
+        env:
+          YOUTUBE_SCHEDULE_PUBLIC_HOUR: ""
+        run: python -m generator.illustration_short_test
       - name: Report latest saved video links
         if: inputs.report_links_only == true
         run: |

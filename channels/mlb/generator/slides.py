@@ -42,7 +42,10 @@ SOURCE_LABELS = {
 }
 
 
-_TOKEN_RE = re.compile(r"[A-Za-z0-9]+(?:[._/+:-][A-Za-z0-9]+)*|.")
+_TOKEN_RE = re.compile(
+    r"[A-Za-z0-9]+(?:[._/+:-][A-Za-z0-9]+)*|"
+    r"[ァ-ヶー・]+|[一-龯々]+[ぁ-ん]{0,4}|[ぁ-ん]+|."
+)
 _BREAK_AFTER = set(" 、。！？：；）】」』〉》〕はがをにへでともやのねよかしばなら")
 _NO_LINE_START = set("、。！？：；）】」』〉》〕ぁぃぅぇぉゃゅょっァィゥェォャュョッー")
 
@@ -293,13 +296,13 @@ def make_slide(
     img.convert("RGB").save(out_path)
 
 
-def make_short_slide(width: int, height: int, source: str, hook: str, out_path: Path, visual: dict = None, background_image_path=None) -> None:
+def make_short_slide(width: int, height: int, source: str, hook: str, out_path: Path, visual: dict = None, background_image_path=None, background_kind=None) -> None:
     """Portrait layout with fixed safe zones for the hook and burned-in captions."""
     has_media = bool(background_image_path) and Path(background_image_path).exists()
     if has_media:
         photo = ImageOps.fit(Image.open(background_image_path).convert("RGB"), (width, height), method=Image.LANCZOS)
         wash = Image.new("RGB", (width, height), BG_TOP)
-        img = Image.blend(photo, wash, 0.48)
+        img = Image.blend(photo, wash, 0.12 if background_kind == "illustration" else 0.48)
     else:
         img = _gradient_background(width, height, BG_TOP, BG_BOTTOM)
     draw = ImageDraw.Draw(img)
@@ -312,8 +315,8 @@ def make_short_slide(width: int, height: int, source: str, hook: str, out_path: 
 
     # Keep the hook below the badge and above the subtitle zone. Its font shrinks
     # until the whole block fits, so Japanese line breaks never collide with UI.
-    hook_top = 210
-    hook_bottom = 600
+    hook_top = 1040 if background_kind == "illustration" else 210
+    hook_bottom = 1300 if background_kind == "illustration" else 600
     max_w = width - margin * 2
     chosen_font = None
     chosen_lines = None
@@ -358,16 +361,19 @@ def make_short_slide(width: int, height: int, source: str, hook: str, out_path: 
         _draw_science_visual(img, draw, margin, 660, width - margin * 2, 540, visual)
 
     divider_y = 1260
-    draw.rounded_rectangle([margin, divider_y, width - margin, divider_y + 5], radius=2, fill=ACCENT_COLOR)
+    if background_kind != "illustration":
+        draw.rounded_rectangle([margin, divider_y, width - margin, divider_y + 5], radius=2, fill=ACCENT_COLOR)
     channel_font = _font(FONT_BOLD, 32)
-    channel_text = "MLB日本人選手ラボ"
+    channel_text = "メジャー魂｜MLB速報"
     channel_w = draw.textlength(channel_text, font=channel_font)
-    draw.text(((width - channel_w) / 2, divider_y + 35), channel_text, font=channel_font, fill=SUMMARY_COLOR)
+    channel_y = 150 if background_kind == "illustration" else divider_y + 35
+    draw.text(((width - channel_w) / 2, channel_y), channel_text, font=channel_font, fill=(255, 255, 255) if background_kind == "illustration" else SUMMARY_COLOR, stroke_width=3 if background_kind == "illustration" else 0, stroke_fill=(8, 18, 30))
 
     guide_font = _font(FONT_REGULAR, 27)
     guide_text = "日本人メジャーリーガーを60秒で！"
     guide_w = draw.textlength(guide_text, font=guide_font)
-    draw.text(((width - guide_w) / 2, divider_y + 90), guide_text, font=guide_font, fill=(132, 147, 157))
+    if background_kind != "illustration":
+        draw.text(((width - guide_w) / 2, divider_y + 90), guide_text, font=guide_font, fill=(132, 147, 157))
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     img.convert("RGB").save(out_path)

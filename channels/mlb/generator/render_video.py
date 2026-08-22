@@ -49,9 +49,9 @@ LONG_SUBTITLE_STYLE = (
 )
 
 SHORT_SUBTITLE_STYLE = (
-    f"FontName={SUBTITLE_FONT},FontSize=12,Bold=1,PrimaryColour=&H00FFFFFF,"
-    "OutlineColour=&H00101010,BorderStyle=1,Outline=0.8,Shadow=0,"
-    "Alignment=2,MarginL=96,MarginR=96,MarginV=96,Spacing=0.1,WrapStyle=2"
+    f"FontName={SUBTITLE_FONT},FontSize=20,Bold=1,PrimaryColour=&H00FFFFFF,"
+    "OutlineColour=&H00101010,BorderStyle=1,Outline=1.0,Shadow=0,"
+    "Alignment=2,MarginL=96,MarginR=96,MarginV=130,Spacing=0.1,WrapStyle=2"
 )
 
 
@@ -168,13 +168,25 @@ def main(script_path=None):
         print(f"[info] wrote {video_dir / f'long_{video_index}.mp4'}")
 
     for i, short in enumerate(data["short_videos"], start=1):
-        assets = [
-            _fetch_mlb_photo(
-                short.get("image_query", "baseball stadium"), asset_dir, f"short_{i}_{asset_index + 1}",
-                session, result_index=asset_index,
-            )
-            for asset_index in range(3)
-        ]
+        illustration_path = short.get("illustration_path")
+        if illustration_path:
+            local_path = ROOT / illustration_path
+            if not local_path.is_file():
+                raise RuntimeError(f"illustration asset not found: {local_path}")
+            assets = [{
+                "kind": "photo", "local_path": str(local_path),
+                "credit": "Original AI illustration / OpenAI image generation",
+                "source_page": "Original illustration generated for this channel",
+                "query": "original player illustration",
+            }]
+        else:
+            assets = [
+                _fetch_mlb_photo(
+                    short.get("image_query", "baseball stadium"), asset_dir, f"short_{i}_{asset_index + 1}",
+                    session, result_index=asset_index,
+                )
+                for asset_index in range(3)
+            ]
         assets = [asset for asset in assets if asset]
         if not assets:
             raise RuntimeError(f"licensed MLB photo not found for Short: {short.get('image_query', '')}")
@@ -184,6 +196,7 @@ def main(script_path=None):
             make_short_slide(
                 *SHORT_SIZE, short.get("category", "MLB"), short["hook"], slide_path,
                 visual=short.get("visual"), background_image_path=asset.get("local_path") if asset else None,
+                background_kind=short.get("asset_kind"),
             )
             slide_paths.append(slide_path)
             if asset:
