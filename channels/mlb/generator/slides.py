@@ -240,6 +240,11 @@ def _draw_science_visual(img, draw, x, y, w, h, visual):
         draw.text((x+(w-tw)/2, y+h-57), shown, font=font, fill=TITLE_COLOR)
 
 
+def _should_draw_diagram(has_media: bool, visual: dict = None) -> bool:
+    """Photos take priority; diagrams are used only when no licensed image exists."""
+    return (not has_media) and bool(visual) and visual.get("kind", "none") != "none"
+
+
 def make_slide(
     width: int,
     height: int,
@@ -290,14 +295,16 @@ def make_slide(
 
 def make_short_slide(width: int, height: int, source: str, hook: str, out_path: Path, visual: dict = None, background_image_path=None) -> None:
     """Portrait layout with fixed safe zones for the hook and burned-in captions."""
-    if background_image_path and Path(background_image_path).exists():
+    has_media = bool(background_image_path) and Path(background_image_path).exists()
+    if has_media:
         photo = ImageOps.fit(Image.open(background_image_path).convert("RGB"), (width, height), method=Image.LANCZOS)
         wash = Image.new("RGB", (width, height), BG_TOP)
         img = Image.blend(photo, wash, 0.48)
     else:
         img = _gradient_background(width, height, BG_TOP, BG_BOTTOM)
     draw = ImageDraw.Draw(img)
-    _draw_decorative_circles(draw, width, height)
+    if not has_media:
+        _draw_decorative_circles(draw, width, height)
 
     margin = int(width * 0.09)
     badge_font = _font(FONT_BOLD, 38)
@@ -345,7 +352,9 @@ def make_short_slide(width: int, height: int, source: str, hook: str, out_path: 
         draw.text(((width - tw) / 2, y), line, font=chosen_font, fill=TITLE_COLOR)
         y += line_h
 
-    if visual:
+    # A licensed photo is the primary explanation. Do not cover it with the old
+    # connected-circle diagram; diagrams are only a last-resort fallback.
+    if _should_draw_diagram(has_media, visual):
         _draw_science_visual(img, draw, margin, 660, width - margin * 2, 540, visual)
 
     divider_y = 1260
@@ -381,17 +390,21 @@ def make_section_slide(
     if has_media:
         photo = ImageOps.fit(
             Image.open(background_image_path).convert("RGB"),
-            (int(width * 0.40), int(height * 0.50)), method=Image.LANCZOS,
+            (int(width * 0.46), int(height * 0.58)), method=Image.LANCZOS,
         )
-        img.paste(photo, (int(width * 0.54), int(height * 0.23)))
+        img.paste(photo, (int(width * 0.52), int(height * 0.20)))
     draw = ImageDraw.Draw(img)
-    _draw_decorative_circles(draw, width, height)
+    if not has_media:
+        _draw_decorative_circles(draw, width, height)
 
     margin = int(width * 0.08)
     marker_d = int(height * 0.045)
     text_x = margin + marker_d + int(width * 0.018)
 
-    has_visual = bool(visual) and visual.get("kind", "none") != "none"
+    # Prefer a real, licensed image whenever one was retrieved. The previous
+    # visual panel was drawn over the photo and made the output look like a row
+    # of connected circles even though an image existed underneath.
+    has_visual = _should_draw_diagram(has_media, visual)
     list_right = width * 0.48 if has_visual or has_media else width * 0.91
     max_w = list_right - text_x
 

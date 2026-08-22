@@ -29,6 +29,9 @@ jobs:
       - name: NBA unit tests
         working-directory: channels/nba
         run: python -m unittest discover -s tests -v
+      - name: MLB unit tests
+        working-directory: channels/mlb
+        run: python -m unittest discover -s tests -v
       - name: Ensure secrets and runtime data are absent
         run: |
           test -z "$(find . -type f \( -name token.json -o -name client_secret.json -o -name .env \) -print)"

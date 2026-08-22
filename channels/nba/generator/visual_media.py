@@ -1,3 +1,4 @@
+import json
 import re
 from pathlib import Path
 from urllib.parse import urlparse
@@ -45,7 +46,7 @@ def _license_ok(meta):
     return any(x in text for x in ALLOWED) and not any(x in text for x in REJECTED)
 
 
-def _search_commons(query: str, filetype: str, session: requests.Session, result_index: int = 0):
+def _search_commons(query: str, filetype: str, session: requests.Session, result_index: int = 0, exclude_source_pages=None):
     params = {
         "action": "query", "generator": "search", "gsrsearch": f"filetype:{filetype} {query}",
         "gsrnamespace": 6, "gsrlimit": 10, "prop": "imageinfo", "iiprop": "url|extmetadata|mime",
@@ -54,6 +55,7 @@ def _search_commons(query: str, filetype: str, session: requests.Session, result
     response = session.get(API, params=params, timeout=25)
     response.raise_for_status()
     matches = []
+    excluded = set(exclude_source_pages or ())
     for page in response.json().get("query", {}).get("pages", {}).values():
         if not _person_title_matches(query, page.get("title", "")):
             continue
@@ -68,19 +70,20 @@ def _search_commons(query: str, filetype: str, session: requests.Session, result
         if filetype == "video" and not is_video:
             continue
         url = info.get("url") if is_video else (info.get("thumburl") or info.get("url"))
-        if _license_ok(meta) and url:
+        source_page = info.get("descriptionurl", "")
+        if _license_ok(meta) and url and source_page not in excluded:
             matches.append({
                 "title": page.get("title", ""), "url": url,
-                "source_page": info.get("descriptionurl", ""), "author": _plain(meta.get("Artist")) or "不明",
+                "source_page": source_page, "author": _plain(meta.get("Artist")) or "不明",
                 "license": _plain(meta.get("LicenseShortName")) or _plain(meta.get("UsageTerms")),
             })
     return matches[result_index % len(matches)] if matches else None
 
 
-def find_commons_photo(query: str, session=None, result_index: int = 0):
+def find_commons_photo(query: str, session=None, result_index: int = 0, exclude_source_pages=None):
     session = session or requests.Session()
     session.headers["User-Agent"] = USER_AGENT
-    return _search_commons(query, "bitmap", session, result_index)
+    return _search_commons(query, "bitmap", session, result_index, exclude_source_pages)
 
 
 def find_commons_video(query: str, session=None):
@@ -109,7 +112,7 @@ def _download(item: dict, out_path: Path, session: requests.Session, max_bytes: 
             f.write(chunk)
 
 
-def fetch_visual_asset(query: str, out_dir: Path, stem: str, session=None, result_index: int = 0):
+def fetch_visual_asset(query: str, out_dir: Path, stem: str, session=None, result_index: int = 0, exclude_source_pages=None):
     """Fetch a license-checked still image. Gameplay/broadcast video retrieval
     is intentionally disabled, even when a search result appears reusable."""
     if not query:
@@ -119,7 +122,7 @@ def fetch_visual_asset(query: str, out_dir: Path, stem: str, session=None, resul
     out_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        photo = find_commons_photo(query, session, result_index)
+        photo = find_commons_photo(query, session, result_index, exclude_source_pages)
     except requests.RequestException:
         photo = None
     if photo:
@@ -138,3 +141,19 @@ def fetch_visual_asset(query: str, out_dir: Path, stem: str, session=None, resul
             pass
 
     return None
+
+
+def load_recent_source_pages(exclude_run_id: str = "", limit: int = 80) -> set:
+    """Reuse cached JSON manifests to avoid repeating the same Commons image across days."""
+    pages = []
+    for manifest in sorted(ASSET_DIR.glob("*/licenses.json"), reverse=True):
+        if manifest.parent.name == exclude_run_id:
+            continue
+        try:
+            items = json.loads(manifest.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        pages.extend(item.get("source_page") for item in items if item.get("source_page"))
+        if len(pages) >= limit:
+            break
+    return set(pages[:limit])

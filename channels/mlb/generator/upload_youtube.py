@@ -89,6 +89,10 @@ def main(script_path=None):
     progress = json.loads(partial_path.read_text(encoding="utf-8")) if partial_path.exists() else {"longs": [], "shorts": []}
     rendered_manifest_path = ROOT / "data" / "assets" / run_id / "licenses.json"
     rendered_manifest = json.loads(rendered_manifest_path.read_text(encoding="utf-8")) if rendered_manifest_path.exists() else []
+    thumbnail_backgrounds = [
+        item.get("local_path") for item in rendered_manifest
+        if item.get("local_path") and Path(item["local_path"]).is_file()
+    ]
     credits = "\n".join(
         f"・{a.get('author')} / {a.get('license')} / {a.get('source_page')}"
         for a in data.get("visual_manifest", [])
@@ -104,7 +108,8 @@ def main(script_path=None):
         if i <= len(long_ids):
             continue
         thumb = video_dir / f"thumbnail_{i}.png"
-        make_thumbnail("MLB", video["thumbnail_text"], video["title"], thumb)
+        background = thumbnail_backgrounds[(i - 1) % len(thumbnail_backgrounds)] if thumbnail_backgrounds else None
+        make_thumbnail("MLB", video["thumbnail_text"], video["title"], thumb, background_image_path=background)
         description = (
             f"{video['summary']}\n\n{notice}\n\n情報源:\n{_sources(data, video['source_ids'])}"
             f"\n\n素材クレジット:\n{credits}\n\nVOICEVOX:ずんだもん"

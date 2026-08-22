@@ -16,6 +16,21 @@ AUDIO_DIR = ROOT / "data" / "audio"
 SCRIPTS_DIR = ROOT / "data" / "scripts"
 VIDEO_DIR = ROOT / "data" / "video"
 ASSET_DIR = ROOT / "data" / "assets"
+MLB_PHOTO_FALLBACKS = ("baseball stadium", "baseball pitching mound", "baseball glove")
+
+
+def _fetch_mlb_photo(query, out_dir, stem, session, result_index):
+    """Prefer the requested player/topic, then a clearly baseball-specific photo."""
+    candidates = [query] + [item for item in MLB_PHOTO_FALLBACKS if item != query]
+    for offset, candidate in enumerate(candidates):
+        asset = fetch_visual_asset(
+            candidate, out_dir, stem, session,
+            result_index=result_index + offset, kind_preference="photo",
+        )
+        if asset:
+            asset["query"] = candidate
+            return asset
+    return None
 
 LONG_SIZE = (1920, 1080)
 SHORT_SIZE = (1080, 1920)
@@ -114,16 +129,16 @@ def main(script_path=None):
         for section_index, section in enumerate(video["sections"]):
             section_duration = durations_data[section_index]["duration"]
             assets = [
-                fetch_visual_asset(
+                _fetch_mlb_photo(
                     section.get("image_query", "baseball stadium"), asset_dir,
                     f"long_{video_index}_section_{section_index + 1}_{asset_index + 1}",
-                    session, result_index=asset_index, kind_preference="photo",
+                    session, result_index=asset_index,
                 )
                 for asset_index in range(max(2, min(4, round(section_duration / 10))))
             ]
             assets = [asset for asset in assets if asset]
             if not assets:
-                assets = [None]
+                raise RuntimeError(f"licensed MLB photo not found for section: {section.get('image_query', '')}")
             for asset_index, asset in enumerate(assets):
                 slide_path = video_dir / f"long_{video_index}_section_{section_index + 1}_{asset_index + 1}.png"
                 make_section_slide(
@@ -135,7 +150,11 @@ def main(script_path=None):
                 image_paths.append(slide_path)
                 durations.append(section_duration / len(assets))
                 if asset:
-                    asset_manifest.append({k: asset.get(k) for k in ("credit", "source_page")})
+                    asset_manifest.append({
+                        **{k: asset.get(k) for k in ("credit", "source_page", "local_path")},
+                        "query": asset.get("query", section.get("image_query", "baseball stadium")),
+                        "usage": f"long_{video_index}_section_{section_index + 1}",
+                    })
         render_deck(
             image_paths, durations, audio_dir / f"long_{video_index}.wav",
             audio_dir / f"long_{video_index}.srt", video_dir / f"long_{video_index}.mp4"
@@ -144,13 +163,15 @@ def main(script_path=None):
 
     for i, short in enumerate(data["short_videos"], start=1):
         assets = [
-            fetch_visual_asset(
+            _fetch_mlb_photo(
                 short.get("image_query", "baseball stadium"), asset_dir, f"short_{i}_{asset_index + 1}",
-                session, result_index=asset_index, kind_preference="photo",
+                session, result_index=asset_index,
             )
             for asset_index in range(3)
         ]
-        assets = [asset for asset in assets if asset] or [None]
+        assets = [asset for asset in assets if asset]
+        if not assets:
+            raise RuntimeError(f"licensed MLB photo not found for Short: {short.get('image_query', '')}")
         slide_paths = []
         for asset_index, asset in enumerate(assets):
             slide_path = video_dir / f"short_{i}_bg_{asset_index + 1}.png"
@@ -160,7 +181,11 @@ def main(script_path=None):
             )
             slide_paths.append(slide_path)
             if asset:
-                asset_manifest.append({k: asset.get(k) for k in ("credit", "source_page")})
+                asset_manifest.append({
+                    **{k: asset.get(k) for k in ("credit", "source_page", "local_path")},
+                    "query": asset.get("query", short.get("image_query", "baseball stadium")),
+                    "usage": f"short_{i}",
+                })
         import wave
         with wave.open(str(audio_dir / f"short_{i}.wav"), "rb") as wav:
             short_duration = wav.getnframes() / wav.getframerate()

@@ -3,7 +3,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
-from generator.visual_media import _basketball_context_matches, _person_title_matches
+from generator.visual_media import _basketball_context_matches, _person_title_matches, load_recent_source_pages
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSET_DIR = ROOT / "data" / "assets"
@@ -21,7 +21,7 @@ def _license_ok(meta):
     return any(x in text for x in ALLOWED) and not any(x in text for x in REJECTED)
 
 
-def find_commons_image(query, session=None):
+def find_commons_image(query, session=None, result_index=0, exclude_source_pages=None):
     session = session or requests.Session()
     session.headers["User-Agent"] = "FinanceNewsYouTube/1.0 (thumbnail asset retrieval; contact via YouTube channel)"
     params = {
@@ -31,25 +31,32 @@ def find_commons_image(query, session=None):
     }
     response = session.get(API, params=params, timeout=25)
     response.raise_for_status()
+    matches = []
+    excluded = set(exclude_source_pages or ())
     for page in response.json().get("query", {}).get("pages", {}).values():
         title = page.get("title", "")
         if not _person_title_matches(query, title) or not _basketball_context_matches(query, title):
             continue
         info = (page.get("imageinfo") or [{}])[0]
         meta = info.get("extmetadata", {})
-        if _license_ok(meta) and (info.get("thumburl") or info.get("url")):
-            return {
+        source_page = info.get("descriptionurl", "")
+        if _license_ok(meta) and (info.get("thumburl") or info.get("url")) and source_page not in excluded:
+            matches.append({
                 "title": page.get("title", ""), "url": info.get("thumburl") or info["url"],
-                "source_page": info.get("descriptionurl", ""), "author": _plain(meta.get("Artist")) or "不明",
+                "source_page": source_page, "author": _plain(meta.get("Artist")) or "不明",
                 "license": _plain(meta.get("LicenseShortName")) or _plain(meta.get("UsageTerms")),
                 "license_url": _plain(meta.get("LicenseUrl")),
-            }
-    return None
+            })
+    return matches[result_index % len(matches)] if matches else None
 
 
 def fetch_thumbnail_background(query: str, run_id: str, session=None):
     session = session or requests.Session()
-    item = find_commons_image(query, session)
+    excluded = load_recent_source_pages(run_id)
+    seed = sum(run_id.encode("utf-8"))
+    item = find_commons_image(query, session, result_index=seed, exclude_source_pages=excluded)
+    if item is None:
+        item = find_commons_image(query, session, result_index=seed)
     if item is None:
         return None
 
