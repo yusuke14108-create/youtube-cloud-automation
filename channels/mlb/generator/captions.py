@@ -134,7 +134,11 @@ def write_srt(captions: list, out_path) -> None:
     out_path.write_text("\n".join(lines), encoding="utf-8")
 
 
-IMPORTANT_RE = re.compile(r"(大谷翔平|山本由伸|佐々木朗希|鈴木誠也|今永昇太|千賀滉大|ダルビッシュ有|菊池雄星|吉田正尚|本塁打|ホームラン|奪三振|勝利|敗戦|記録|\d+(?:\.\d+)?(?:本|安打|打点|盗塁|勝|敗|奪三振|回)?)")
+IMPORTANT_RE = re.compile(
+    r"(大谷翔平|山本由伸|佐々木朗希|鈴木誠也|今永昇太|千賀滉大|"
+    r"ダルビッシュ有|菊池雄星|吉田正尚|6年連続|30本塁打|30号|"
+    r"448フィート|2ラン本塁打|二刀流)"
+)
 
 
 def _highlight(text: str) -> str:

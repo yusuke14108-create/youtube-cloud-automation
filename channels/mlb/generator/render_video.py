@@ -60,7 +60,7 @@ def _escape_for_filter(path: Path) -> str:
 
 
 def render(wav_path: Path, srt_path: Path, slide_path: Path, out_path: Path) -> None:
-    subtitles_arg = f"subtitles={_escape_for_filter(srt_path)}:force_style='{SHORT_SUBTITLE_STYLE}'"
+    subtitles_arg = f"subtitles=filename='{_escape_for_filter(srt_path)}':force_style='{SHORT_SUBTITLE_STYLE}'"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     cmd = [
         FFMPEG_BIN,
@@ -90,7 +90,7 @@ def render_deck(image_paths: list, durations: list, wav_path: Path, srt_path: Pa
     concat_path.parent.mkdir(parents=True, exist_ok=True)
     concat_path.write_text("\n".join(lines), encoding="utf-8")
 
-    subtitles_arg = f"subtitles={_escape_for_filter(srt_path)}:force_style='{subtitle_style}'"
+    subtitles_arg = f"subtitles=filename='{_escape_for_filter(srt_path)}':force_style='{subtitle_style}'"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     cmd = [
         FFMPEG_BIN,
@@ -112,22 +112,22 @@ def render_deck(image_paths: list, durations: list, wav_path: Path, srt_path: Pa
     subprocess.run(cmd, capture_output=True, text=True, check=True)
 
 
-def render_short_motion(slide_path: Path, duration: float, wav_path: Path, srt_path: Path, out_path: Path) -> None:
+def render_short_motion(background_path: Path, overlay_path: Path, duration: float, wav_path: Path, srt_path: Path, out_path: Path) -> None:
     """Animate a portrait hero frame while keeping subtitles in the safe zone."""
-    subtitles_arg = f"subtitles={_escape_for_filter(srt_path)}:force_style='{SHORT_SUBTITLE_STYLE}'"
+    subtitles_arg = f"subtitles=filename='{_escape_for_filter(srt_path)}':force_style='{SHORT_SUBTITLE_STYLE}'"
     frames = max(1, round(duration * 25))
     # Slow push-in plus a slight horizontal drift.  Scale first so zoompan can
     # crop without exposing an edge; subtitles are applied after the movement.
     filters = (
-        "scale=1296:2304,"
-        f"zoompan=z='min(zoom+0.0007,1.11)':x='iw/2-(iw/zoom/2)+sin(on/38)*10':"
-        f"y='ih/2-(ih/zoom/2)-on/18':d={frames}:s=1080x1920:fps=25,"
-        + subtitles_arg
+        "[0:v]scale=1296:2304,"
+        f"zoompan=z='min(zoom+0.00055,1.09)':x='iw/2-(iw/zoom/2)+sin(on/42)*9':"
+        f"y='ih/2-(ih/zoom/2)+35':d={frames}:s=1080x1920:fps=25[bg];"
+        "[1:v]format=rgba[ui];[bg][ui]overlay=0:0:format=auto," + subtitles_arg + "[v]"
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     cmd = [
-        FFMPEG_BIN, "-y", "-loop", "1", "-i", str(slide_path), "-i", str(wav_path),
-        "-vf", filters, "-frames:v", str(frames), "-c:v", "libx264", "-preset", "medium",
+        FFMPEG_BIN, "-y", "-loop", "1", "-i", str(background_path), "-loop", "1", "-i", str(overlay_path), "-i", str(wav_path),
+        "-filter_complex", filters, "-map", "[v]", "-map", "2:a", "-frames:v", str(frames), "-c:v", "libx264", "-preset", "medium",
         "-c:a", "aac", "-b:a", "192k", "-pix_fmt", "yuv420p", "-shortest", str(out_path),
     ]
     subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -212,14 +212,19 @@ def main(script_path=None):
         if not assets:
             raise RuntimeError(f"licensed MLB photo not found for Short: {short.get('image_query', '')}")
         slide_paths = []
+        motion_backgrounds = []
         for asset_index, asset in enumerate(assets):
             slide_path = video_dir / f"short_{i}_bg_{asset_index + 1}.png"
+            background_path = video_dir / f"short_{i}_photo_{asset_index + 1}.png" if short.get("motion_style") == "editorial_push" else None
             make_short_slide(
                 *SHORT_SIZE, short.get("category", "MLB"), short["hook"], slide_path,
                 visual=short.get("visual"), background_image_path=asset.get("local_path") if asset else None,
                 background_kind=short.get("asset_kind"),
+                background_out_path=background_path,
             )
             slide_paths.append(slide_path)
+            if background_path:
+                motion_backgrounds.append(background_path)
             if asset:
                 asset_manifest.append({
                     **{k: asset.get(k) for k in ("credit", "source_page", "local_path")},
@@ -231,7 +236,7 @@ def main(script_path=None):
             short_duration = wav.getnframes() / wav.getframerate()
         if short.get("motion_style") == "editorial_push" and len(slide_paths) == 1:
             render_short_motion(
-                slide_paths[0], short_duration, audio_dir / f"short_{i}.wav",
+                motion_backgrounds[0], slide_paths[0], short_duration, audio_dir / f"short_{i}.wav",
                 audio_dir / f"short_{i}.srt", video_dir / f"short_{i}.mp4",
             )
         else:

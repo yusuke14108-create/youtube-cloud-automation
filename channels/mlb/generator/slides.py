@@ -296,26 +296,41 @@ def make_slide(
     img.convert("RGB").save(out_path)
 
 
-def make_short_slide(width: int, height: int, source: str, hook: str, out_path: Path, visual: dict = None, background_image_path=None, background_kind=None) -> None:
+def make_short_slide(width: int, height: int, source: str, hook: str, out_path: Path, visual: dict = None, background_image_path=None, background_kind=None, background_out_path: Path = None) -> None:
     """Portrait layout with fixed safe zones for the hook and burned-in captions."""
     has_media = bool(background_image_path) and Path(background_image_path).exists()
     if has_media:
         photo = ImageOps.fit(Image.open(background_image_path).convert("RGB"), (width, height), method=Image.LANCZOS)
+        if background_kind == "illustration":
+            # Give the hero artwork more breathing room below the top UI.  Fill
+            # the revealed strip with a sampled dark tone rather than stretching
+            # the artwork or changing its aspect ratio.
+            shift_y = 64
+            sampled = photo.resize((1, 1), Image.Resampling.BOX).getpixel((0, 0))
+            lowered = Image.new("RGB", (width, height), sampled)
+            lowered.paste(photo, (0, shift_y))
+            photo = lowered
         wash = Image.new("RGB", (width, height), BG_TOP)
         img = Image.blend(photo, wash, 0.12 if background_kind == "illustration" else 0.48)
     else:
         img = _gradient_background(width, height, BG_TOP, BG_BOTTOM)
+    if background_out_path:
+        background_out_path.parent.mkdir(parents=True, exist_ok=True)
+        img.save(background_out_path)
+        # All typography and cards live on a static transparent layer.  This
+        # lets the renderer animate only the photo underneath them.
+        img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     if not has_media:
         _draw_decorative_circles(draw, width, height)
 
-    margin = int(width * 0.07)
+    margin = int(width * 0.095)
     badge_font = _font(FONT_BOLD, 30)
     _draw_badge(draw, margin, 70, SOURCE_LABELS.get(source, source), badge_font)
 
     # Compact edge branding: keep the player's face and the hook clear.  The old
     # full channel name was centred over the hero image and competed with it.
-    brand_y = 70
+    brand_y = 92
     brand_h = 58
     brand_text = "MLB FLASH"
     brand_font = _font(FONT_BOLD, 25)
@@ -334,8 +349,8 @@ def make_short_slide(width: int, height: int, source: str, hook: str, out_path: 
 
     # Keep the hook below the badge and above the subtitle zone. Its font shrinks
     # until the whole block fits, so Japanese line breaks never collide with UI.
-    hook_top = 1040 if background_kind == "illustration" else 210
-    hook_bottom = 1300 if background_kind == "illustration" else 600
+    hook_top = 1160 if background_kind == "illustration" else 260
+    hook_bottom = 1410 if background_kind == "illustration" else 650
     # An asymmetric lower-third feels more editorial and avoids the old
     # everything-in-the-middle composition.
     card_right = int(width * 0.80)
@@ -373,7 +388,9 @@ def make_short_slide(width: int, height: int, source: str, hook: str, out_path: 
 
     y = hook_top + (hook_bottom - hook_top - block_h) / 2
     for line in chosen_lines:
-        draw.text((margin + 24, y), line, font=chosen_font, fill=TITLE_COLOR)
+        tw = draw.textlength(line, font=chosen_font)
+        text_x = (margin - 8 + card_right - tw) / 2
+        draw.text((text_x, y), line, font=chosen_font, fill=TITLE_COLOR)
         y += line_h
 
     # A licensed photo is the primary explanation. Do not cover it with the old
@@ -391,7 +408,10 @@ def make_short_slide(width: int, height: int, source: str, hook: str, out_path: 
         draw.text(((width - guide_w) / 2, divider_y + 90), guide_text, font=guide_font, fill=(132, 147, 157))
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    img.convert("RGB").save(out_path)
+    if background_out_path:
+        img.save(out_path)
+    else:
+        img.convert("RGB").save(out_path)
 
 
 def make_section_slide(
