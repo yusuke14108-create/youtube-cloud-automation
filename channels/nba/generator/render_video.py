@@ -1,4 +1,5 @@
 import json
+import re
 import subprocess
 import wave
 from pathlib import Path
@@ -19,16 +20,60 @@ LONG_SIZE = (1920, 1080)
 SHORT_SIZE = (1080, 1920)
 FPS = 25
 
-SUBTITLE_STYLE = (
-    "FontName=Noto Sans CJK JP,FontSize=16,Bold=1,PrimaryColour=&H00FFFFFF,"
-    "OutlineColour=&H00101010,BorderStyle=1,Outline=1.0,Shadow=0,"
-    "Alignment=2,MarginL=104,MarginR=104,MarginV=96,WrapStyle=2"
+_SRT_BLOCK_RE = re.compile(
+    r"\d+\s*\n(\d{2}):(\d{2}):(\d{2}),(\d{3})\s+-->\s+"
+    r"(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*\n(.*?)(?=\n\s*\n|\Z)",
+    re.DOTALL,
 )
-LONG_SUBTITLE_STYLE = (
-    "FontName=Noto Sans CJK JP,FontSize=29,Bold=1,PrimaryColour=&H00FFFFFF,"
-    "OutlineColour=&H00101010,BorderStyle=1,Outline=1.5,Shadow=0,"
-    "Alignment=2,MarginL=42,MarginR=42,MarginV=46,WrapStyle=2"
-)
+
+
+def _ass_time(parts) -> str:
+    hours, minutes, seconds, millis = map(int, parts)
+    return f"{hours}:{minutes:02d}:{seconds:02d}.{millis // 10:02d}"
+
+
+def _write_ass(srt_path: Path, kind: str) -> Path:
+    """Write explicit-resolution captions so cloud runners cannot resize or
+    push them outside the visible frame.  Shorts use the same mobile-first
+    sizing proven in the MLB test; long video uses a proportional 16:9 style."""
+    if kind == "short":
+        play_res = (1080, 1920)
+        style = "Style: Caption,Noto Sans CJK JP,72,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,-1,0,0,0,88,100,0,0,1,3.2,0,2,120,120,300,1"
+    elif kind == "long":
+        play_res = (1920, 1080)
+        style = "Style: Caption,Noto Sans CJK JP,52,&H00FFFFFF,&H00FFFFFF,&H00101010,&H00000000,-1,0,0,0,96,100,0,0,1,2.6,0,2,150,150,78,1"
+    else:
+        raise ValueError(f"unknown subtitle kind: {kind}")
+
+    events = []
+    for match in _SRT_BLOCK_RE.finditer(srt_path.read_text(encoding="utf-8")):
+        groups = match.groups()
+        text = groups[8].strip().replace("\n", r"\N").replace(",", "，")
+        text = text.replace('<font color="#FFD54A">', r"{\c&H4AD5FF&}")
+        text = text.replace("</font>", r"{\c&HFFFFFF&}")
+        events.append(
+            f"Dialogue: 0,{_ass_time(groups[:4])},{_ass_time(groups[4:8])},Caption,,0,0,0,,{text}"
+        )
+    if not events:
+        raise RuntimeError(f"no subtitle events parsed from {srt_path}")
+
+    ass_path = srt_path.with_name(f"{srt_path.stem}_{kind}.ass")
+    header = f"""[Script Info]
+ScriptType: v4.00+
+PlayResX: {play_res[0]}
+PlayResY: {play_res[1]}
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+{style}
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+    ass_path.write_text(header + "\n".join(events) + "\n", encoding="utf-8")
+    return ass_path
 
 
 def _escape_for_filter(path: Path) -> str:
@@ -174,12 +219,13 @@ def compose_full_frame_bg_only(motion_clip_path, foreground_path, out_path, widt
     _run_ffmpeg(cmd)
 
 
-def concat_clips_with_audio_and_subtitles(clip_paths, wav_path, srt_path, out_path, style) -> None:
+def concat_clips_with_audio_and_subtitles(clip_paths, wav_path, srt_path, out_path, subtitle_kind) -> None:
     concat_path = out_path.parent / f"{out_path.stem}_concat.txt"
     lines = [f"file '{p}'" for p in clip_paths]
     concat_path.write_text("\n".join(lines), encoding="utf-8")
 
-    subtitles_arg = f"subtitles=filename='{_escape_for_filter(srt_path)}':force_style='{style}'"
+    ass_path = _write_ass(srt_path, subtitle_kind)
+    subtitles_arg = f"ass=filename='{_escape_for_filter(ass_path)}'"
     cmd = [
         FFMPEG_BIN, "-y",
         "-f", "concat", "-safe", "0", "-i", str(concat_path),
@@ -242,7 +288,7 @@ def main(script_path=None):
         clip_paths.append(clip_path)
 
     concat_clips_with_audio_and_subtitles(
-        clip_paths, audio_dir / "long.wav", audio_dir / "long.srt", video_dir / "long.mp4", LONG_SUBTITLE_STYLE,
+        clip_paths, audio_dir / "long.wav", audio_dir / "long.srt", video_dir / "long.mp4", "long",
     )
     print(f"[info] wrote {video_dir / 'long.mp4'}")
 
@@ -272,7 +318,7 @@ def main(script_path=None):
         compose_full_frame_bg_only(motion_path, fg_path, clip_path, short_w, short_h, duration)
 
         concat_clips_with_audio_and_subtitles(
-            [clip_path], short_wav, audio_dir / f"short_{i}.srt", video_dir / f"short_{i}.mp4", SUBTITLE_STYLE,
+            [clip_path], short_wav, audio_dir / f"short_{i}.srt", video_dir / f"short_{i}.mp4", "short",
         )
         print(f"[info] wrote {video_dir / f'short_{i}.mp4'}")
 

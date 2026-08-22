@@ -82,6 +82,9 @@ jobs:
         run: python -m generator.cli run --upload-private
       - name: Rerender latest script and upload privately
         if: inputs.rerender_latest_script == true
+        env:
+          # Presentation tests must remain private with no future publishAt.
+          YOUTUBE_SCHEDULE_PUBLIC_HOUR: ""
         run: python -m generator.rerender_latest
       - name: Quality gate
         working-directory: .
